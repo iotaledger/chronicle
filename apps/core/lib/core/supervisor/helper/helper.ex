@@ -1,4 +1,4 @@
-defmodule Core.Helper do
+defmodule Core.Supervisor.Helper do
 
   @moduledoc false
 

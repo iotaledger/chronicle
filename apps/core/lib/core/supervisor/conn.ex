@@ -1,6 +1,7 @@
 defmodule Core.Supervisor.Conn do
 
   use Supervisor
+  alias Core.Supervisor.Helper
 
   def start_link(args) do
     Supervisor.start_link(__MODULE__, args, name: :"#{args[:ring_key]}_#{args[:shard]}_#{args[:conn]}")
@@ -23,10 +24,10 @@ defmodule Core.Supervisor.Conn do
     reporter_args = [otp_app: otp_app, conn: conn, shard: shard, logged: loggeds, unlogged: unloggeds, counter: counters, address: address]
     sender_args = [otp_app: otp_app, conn: conn, shard: shard, address: address]
     recv_args = [otp_app: otp_app, conn: conn, shard: shard, address: address, port: port, priority: priority]
-    Core.Helper.gen_recv_children([],recv_args)
-    |> Core.Helper.gen_batcher_children(loggeds,logged_args)
-    |> Core.Helper.gen_batcher_children(unloggeds,unlogged_args) |> Core.Helper.gen_batcher_children(counters,counter_args)
-    |> Core.Helper.gen_reporter_sender_children(reporter_per_shard,reporter_args, sender_args)
+    Helper.gen_recv_children([],recv_args)
+    |> Helper.gen_batcher_children(loggeds,logged_args)
+    |> Helper.gen_batcher_children(unloggeds,unlogged_args) |> Helper.gen_batcher_children(counters,counter_args)
+    |> Helper.gen_reporter_sender_children(reporter_per_shard,reporter_args, sender_args)
     |> :lists.reverse() |> Supervisor.init(strategy: :one_for_all)
   end
 

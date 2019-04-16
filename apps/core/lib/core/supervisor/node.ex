@@ -11,7 +11,7 @@ defmodule Core.Supervisor.Node do
 
   def init(args) do
     ring_key = args[:ring_key]
-    shards = FastGlobal.get(args[:ring_key])[:shards]
+    shards = FastGlobal.get(ring_key)[:shards]
     children = my_children(shards, ring_key, args)
     Supervisor.init(children, strategy: :one_for_one)
   end

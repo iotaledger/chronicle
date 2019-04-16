@@ -30,7 +30,7 @@ defmodule Core.Supervisor.Cluster.Manager do
   end
 
   defp start_children(_, _, _) do
-    :empty
+    nil
   end
 
   defp start_node_child(address, port, otp_app, args) do
