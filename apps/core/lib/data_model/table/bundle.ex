@@ -1,4 +1,4 @@
-defmodule Core.DataModel.Keyspace.Bundle do
+defmodule Core.DataModel.Table.Bundle do
 
   @moduledoc """
 

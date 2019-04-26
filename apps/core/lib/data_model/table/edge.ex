@@ -1,4 +1,4 @@
-defmodule Core.DataModel.Keyspace.Edge do
+defmodule Core.DataModel.Table.Edge do
 
   @moduledoc """
 
