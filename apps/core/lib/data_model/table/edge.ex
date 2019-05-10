@@ -19,10 +19,7 @@ defmodule Core.DataModel.Table.Edge do
     is input/output and the head_hash when the labels are
     tx_hash/approve/head_hash.
     :ix is an index alias, also the 5th clustering key,
-    which hold the current_index(signed-varint form) in interesting way
-    (negative/positive):
-    if the labels are output/input, then the indexes are 0 >= N
-    while for the tx_hash/head_hash's labels are min_varint..max_varint.
+    which hold the current_index(signed-varint form)
 
     we consider the transaction is an input if the following cond is met:
       - value of the transaction is less than zero.
@@ -35,6 +32,10 @@ defmodule Core.DataModel.Table.Edge do
     if the label is approve,then the indexes are only (0 or 1) where
      0 indicates trunk_tip(tip0)
      1 indicates branch_tip(tip1)
+
+    :el is an extra label alias, and non-clustering-column,
+    it hold an extra label in varint form, mostly it's used for tx-hash
+    rows, it will indicate whether the tx-hash row belongs to input or output.
 
     # NOTE: the labels are stored in tinyint form, %{
 
@@ -72,6 +73,7 @@ defmodule Core.DataModel.Table.Edge do
     column :v2, :varchar
     column :ex, :varchar
     column :ix, :varint
+    column :el, :varint
     column :lx, :varint
     column :sx, :varchar
     partition_key [:v1]
