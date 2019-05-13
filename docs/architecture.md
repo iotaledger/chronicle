@@ -1,6 +1,6 @@
 # <center> Chronicle System Architecture </center>
 
-<center> 
+<center>
 Version <01>-<draft>
 
 May 07, 2019
@@ -143,9 +143,9 @@ In the era of big data, a single node cannot hold an unbounded dataset. Even if 
 	-   Safe in case of extended downtime (check hinted handoff) for N nodes and a keyspace with reasonable replication factor, e.g.single node failure allowable when RF=3.
 
 -   Multiple Data Centers,[NetworkTopologyStrategy](https://www.google.com/url?q=https://docs.datastax.com/en/cassandra/3.0/cassandra/architecture/archDataDistributeReplication.html&sa=D&ust=1557585961092000&usg=AFQjCNGpXefHciSMXIhJxzlFAa0ORwrp2g) (currently not supported by chronicle)
-	
+
 	-   Full power outage for a single rack or datacenter will not affect the data consistency for a keyspace with reasonable replication factor across multiple data centers..
-	
+
 	-   Support is on the Chronicle roadmap.
 
 
@@ -177,7 +177,7 @@ In the era of big data, a single node cannot hold an unbounded dataset. Even if 
 
 -   Why ScyllaDB?
 
-    -   Built in [shard-awareness](https://github.com/scylladb/scylla/blob/master/docs/protocol-extensions.md) 
+    -   Built in [shard-awareness](https://github.com/scylladb/scylla/blob/master/docs/protocol-extensions.md)
 
     -   LSM-based storage, with high write throughput.
 
@@ -228,17 +228,17 @@ A collection of columns fetched by row. Columns are ordered by Clustering Key. T
 ### 7.1 SYSTEM OVERVIEW
 ---
 
-![](media/architecture/overview.jpg){width="6.470833333333333in" height="4.180555555555555in"}
+![](media/architecture/overview.jpg)
 
 ### 7.2 LOGICAL VIEW
 ---
-![](media/architecture/logical.jpg){width="6.470833333333333in" height="4.180555555555555in"}
+![](media/architecture/logical.jpg)
 
 ### 7.3 COMPONENTS VIEW
 ---
-![](media/architecture/chronicle-node.jpg){width="6.470833333333333in" height="4.180555555555555in"}
+![](media/architecture/chronicle-node.jpg)
 
-![](media/architecture/scylla-swarm.jpg){width="6.470833333333333in" height="4.180555555555555in"}
+![](media/architecture/scylla-swarm.jpg)
 
 ### 7.4 COMPONENT DESCRIPTIONS
 ---
@@ -283,7 +283,7 @@ All tasks run in a preemptive scheduling process using a round-robin algorithm.
 #### 7.4.4 PROJECT AND SUPERVISION TREES
 ---
 
-![](media/architecture/supervision-trees.jpg){width="6.470833333333333in" height="4.180555555555555in"}
+![](media/architecture/supervision-trees.jpg)
 
 -   :one\_for\_one - if a child process terminates, only that process is restarted.
 
@@ -296,18 +296,18 @@ Independent microservice or one that is dependent on other apps. Eg an app may h
 
 #### 7.4.6 DATA MODELS
 ---
-A schema for the corresponding dataset. By default the Core App has the 
+A schema for the corresponding dataset. By default the Core App has the
 following optimized Tangle data-model:
 
 > **Note**: Please refer to the Abbreviation List
 
 -   **Bundle table** with bundle\_hash as the main partition key. This means all bundles with same bundle\_hash are stored in the same partition and replicated in the same replicas. This enables workers to lookup the bundle's rows in partition order by the following labels (outputs -\> inputs -\> tranasctions\_hashes -\> head\_hashes). All the rows belong to the same partition, ordered by current\_index(index) in ASC order. For instance, here is an example for a bundle with three outputs, one input and two attachments.
 
-![](media/architecture/bundle-table.png){width="6.470833333333333in" height="3.7083333333333335in"}
+![](media/architecture/bundle-table.png)
 
 -   **Edge table** which acts as secondary indexes to the bundle relations. The partition key can be any field (address, transaction\_hash, tip). All the rows with the same partition key are stored in the same partition and replicated across the same replicas. This enables lookup by any partition key (even within a time-range), e.g. selecting an address which has been used as an input or output within a time-range.
 
-![](media/architecture/edge-table.png){width="6.470833333333333in" height="5.027777777777778in"}
+![](media/architecture/edge-table.png)
 
 -   **Zero\_value table** which stores the monthly (or weekly or daily) address activities for any zero\_value\_bundle. The schema is almost identical to the edge table, except the partition key is a composite partition key(v1, yy/mm).
 
@@ -487,7 +487,7 @@ The following diagram represents the **Data Flow** between the lightweight proce
 \_\_CONN\_PER\_SHARD\_\_: 1
 :::
 
-![](media/architecture/data-flow.jpg){width="6.470833333333333in" height="4.180555555555555in"}
+![](media/architecture/data-flow.jpg)
 
 ## <span style="color:darkgray"> 9. FUTURE WORK </span>
 
