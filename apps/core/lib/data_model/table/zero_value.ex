@@ -29,7 +29,7 @@ defmodule Core.DataModel.Table.ZeroValue do
     }
 
     :lx is a last_index alias, and non-clustering-column,
-    it hold the same value(last_index in trytes form) no matter
+    it hold the same value(last_index in varint form) no matter
     what the labels are.
 
   """

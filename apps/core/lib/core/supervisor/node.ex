@@ -34,7 +34,7 @@ defmodule Core.Supervisor.Node do
     end
   end
 
-  @spec ny_children(nil, atom, list) :: term
+  @spec my_children(nil, atom, list) :: term
   defp my_children(_, ring_key, args) do
     Logger.warn("Node Supervisor sleeping for 5 seconds till the shards info regarding #{args[:ring_key]} is available.")
     Process.sleep(5000)
