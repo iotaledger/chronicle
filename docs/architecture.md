@@ -1,7 +1,7 @@
 # <center> Chronicle System Architecture </center>
 
 <center>
-Version <01>-<draft>
+Version <01> - <draft>
 
 May 07, 2019
 
