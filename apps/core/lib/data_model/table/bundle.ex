@@ -12,7 +12,11 @@ defmodule Core.DataModel.Table.Bundle do
     :lb is a label alias, and also the first clustering key.
     :ts is a bundle_timestamp alias, and also the second clustering key.
     :ix is an index alias, and also the third clustering key.
-    :id is an id, and also the last clustering key.
+    :id is an id, and also the forth clustering key.
+    :va is a value, and also the last clustering key,
+      if labels(lb) are output or input, the :va hold the address trytes,
+      if labels(lb) are txhash or headhash, the :va indicates whether it's
+      input or output.
 
     all the next non-clustering-columns are named to form
     alphabetical/asc order, and the names don't hold anymeaning,
@@ -68,6 +72,7 @@ defmodule Core.DataModel.Table.Bundle do
     column :ts, :varint
     column :ix, :varint
     column :id, :varchar
+    column :va, :varchar
     column :a, :varchar
     column :b, :varchar
     column :c, :varchar
@@ -78,7 +83,7 @@ defmodule Core.DataModel.Table.Bundle do
     column :h, :varchar
     column :i, :varchar
     partition_key [:bh]
-    cluster_columns [:lb, :ts, :ix, :id]
+    cluster_columns [:lb, :ts, :ix, :id, :va]
     with_options [
     clustering_order_by: [
       lb: :asc,
