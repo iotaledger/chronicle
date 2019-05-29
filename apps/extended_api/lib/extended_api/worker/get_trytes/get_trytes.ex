@@ -1,8 +1,5 @@
 defmodule ExtendedApi.Worker.GetTrytes do
 
-
-  # NOTE:  this is WORK in Progress. (not ready yet)
-
   use GenServer
   use OverDB.Worker,
     executor: Core.Executor
@@ -11,7 +8,6 @@ defmodule ExtendedApi.Worker.GetTrytes do
 
   @doc """
     This function handing starting GetTrytes worker.
-    it takes hashes list as an argument.
   """
   @spec start_link() :: tuple
   def start_link() do
@@ -91,17 +87,17 @@ defmodule ExtendedApi.Worker.GetTrytes do
     # now we decode the buffer using the query_state.
     case Protocol.decode_full(buffer, query_state) do
       # this the tuple result.
-      {%Compute{result: {_, _} = result}, _old_query_state} ->
+      {%Compute{result: {_, _} = result}, _query_state} ->
         case result do
           {:ok, query_state} ->
             # this mean the bundle query had been sent,
-            # thu we should update the state map for qf
+            # therefore we should update the state map for qf
             # with the new query_state.
             state_map = %{state_map | qf => query_state}
             {:noreply, {{ref, trytes_list}, state_map}}
           error ->
             # NOTE: we might add retry business logic.
-            # we break and response.
+            # we break and respond.
             from = state_map[:from] # this the caller reference.
             reply(from, error)
             {:stop, :normal, state}
@@ -109,8 +105,8 @@ defmodule ExtendedApi.Worker.GetTrytes do
       # empty result because the transaction in trytes_list at index(qf)
       # doesn't have a row in ScyllaDB Edge table.
       # thus no further actions should be taken for that transaction.
-      {%Compute{result: []}, _old_query_state} ->
-        # this reduce the ref.
+      {%Compute{result: []}, _} ->
+        # we reduce the ref.
         # NOTE: we reduce the ref only when the cycle for hash
         # is complete, thus empty list means no further
         # responses are expected for hash at index qf.
@@ -152,7 +148,7 @@ defmodule ExtendedApi.Worker.GetTrytes do
         # verfiy to proceed or break.
         ok?(ok?, state_map, state)
       %Error{reason: reason} ->
-        # we break and response.
+        # we break and respond.
         from = state_map[:from] # this the caller reference.
         reply(from, {:error, reason})
         {:stop, :normal, state}
@@ -236,8 +232,19 @@ defmodule ExtendedApi.Worker.GetTrytes do
       # # NOTE: half_map only hold the address's row computing result.
       {%Compute{result: half_map}, %{has_more_pages: true, paging_state: p_state}} ->
         # create new bundle query to fetch the remaining row(transaction's row)
-        # TODO:
-        {:noreply, state}
+        # we fetch the opts.
+        %{opts: opts} = query_state
+        # we add paging state to the opts.
+        opts = Map.put(opts, :paging_state, p_state)
+        # we pass the opts as an argument to generate bundle query with paging_state.
+        {ok?, _, query_state} = Helper.bundle_query_from_opts(opts)
+        # we assign half_map as acc to query_state
+        query_state = Map.put(query_state, :acc, half_map)
+        # we update query_state in state_map
+        state_map = Map.put(state_map, qf, query_state)
+        state = {{ref, trytes_list}, state_map}
+        # verfiy to proceed or break.
+        ok?(ok?, state_map, state)
       # this is unprepared error handler
       %Error{reason: :unprepared} ->
         # first we use hardcoded cql statement of bundle query.
@@ -251,51 +258,126 @@ defmodule ExtendedApi.Worker.GetTrytes do
         # verfiy to proceed or break.
         ok?(ok?, state_map, state)
       %Error{reason: reason} ->
-        # we break and response.
+        # we break and respond.
         from = state_map[:from] # this the caller reference.
         reply(from, {:error, reason})
         {:stop, :normal, state}
     end
   end
 
+  @doc """
+    This function handle start buffer for a streaming buffer.
+  """
+  def handle_cast({call, {:edge, qf}, buffer}, {{ref, trytes_list}, state_map}) when call in [:start, :stream] do
+    # we are certain the response will be %ignore{} because we are
+    # expecting to receive only one row from edge table, which should be
+    # handled in the end handler and not :start neither :stream.
+    %Ignore{state: query_state} = Protocol.decode_all(call,buffer, Map.get(state_map, qf))
+    {:noreply, {{ref, trytes_list}, Map.put(state_map, qf, query_state)}}
+  end
 
-
-# TODO: WIP
-####################### handling stream not ready yet...
-
-  def handle_cast({:start, query_ref, buffer}, query_state) do
-    case Protocol.decode_start(buffer, query_state) do
-      {rows, query_state} ->
-        {:noreply, query_state}
-      %Ignore{state: query_state} ->
-        # you are not suppose to do anything here
-        # except returning the new query_state
-        {:noreply, query_state}
+  def handle_cast({:end, {:edge, qf}, buffer}, {{ref, trytes_list}, state_map} = state) do
+    # we are certain the response will be %Compute%{}
+    case Protocol.decode_end(buffer, Map.get(state_map, qf)) do
+      {%Compute{result: {_, _} = result}, _} ->
+        case result do
+          {:ok, query_state} ->
+            # this mean the bundle query had been sent,
+            # therefore we should update the state map for qf
+            # with the new query_state.
+            state_map = %{state_map | qf => query_state}
+            {:noreply, {{ref, trytes_list}, state_map}}
+          error ->
+            # NOTE: we might add retry business logic.
+            # we break and respond.
+            from = state_map[:from] # this the caller reference.
+            reply(from, error)
+            {:stop, :normal, state}
+        end
+      {%Compute{result: []}, _} ->
+        # we reduce the ref.
+        ref = ref-1
+        # we check if this response is the last response.
+        case ref do
+          0 ->
+            # this indicates it's the last response
+            # (or might be the first and last)
+            # therefore we fulfil the API call.
+            # First we fetch the from reference for the caller processor.
+            from = state_map[:from] # this the caller reference.
+            # Now we reply with the current trytes_list.
+            reply(from, {:ok, trytes_list})
+            # now we stop the worker.
+            {:stop, :normal, state}
+          _ ->
+            # this indicates it's not the last response.
+            # therefore we return the updated state.
+            # we don't longer need the query_state for qf.
+            state_map = Map.delete(state_map, qf)
+            state = {{ref, trytes_list}, state_map}
+            {:noreply, state}
+        end
     end
   end
 
-
-  def handle_cast({:stream, query_ref, buffer}, query_state) do
-    case Protocol.decode_stream(buffer, query_state) do
-      {rows, query_state} ->
-        # handle rows stream as whatever you like.
-        {:noreply, query_state}
+  def handle_cast({call, {:bundle, qf}, buffer}, {{ref, trytes_list}, state_map}) when call in [:start, :stream] do
+    # first we fetch the query state from the state_map using the qf key.
+    query_state = Map.get(state_map, qf)
+    # now we decode the buffer using the query_state.
+    case Protocol.decode_all(call,buffer,query_state) do
+      # this indicates the address's map for transaction at index(qf) is ready
+      {%Compute{result: half_map}, query_state} when is_map(half_map) ->
+        query_state = Map.put(query_state, :acc, half_map)
+        {:noreply, {{ref, trytes_list}, Map.put(state_map, qf, query_state)}}
       %Ignore{state: query_state} ->
-        # you are not suppose to do anything here
-        # except returning the new query_state
-        {:noreply, query_state}
+        {:noreply, {{ref, trytes_list}, Map.put(state_map, qf, query_state)}}
     end
   end
 
-  def handle_cast({:end, query_ref, buffer}, query_state) do
-    case Protocol.decode_end(buffer, query_state) do
-      {rows, query_state} ->
-        # handle the last stream of the rows.
-        {:noreply, %{}}
-      response ->
-        # this is %Rows{} response. which is the result
-        # of select queries with prepare? false.
-        {:noreply, %{}}
+  def handle_cast({:end, {:bundle, qf}, buffer}, {{ref, trytes_list}, state_map} = state) do
+    # first we fetch the query state from the state_map using the qf key.
+    query_state = Map.get(state_map, qf)
+    # now we decode the buffer using the query_state.
+    case Protocol.decode_end(buffer,query_state) do
+      # this indicates the tx-object map for transaction at index(qf) is ready.
+      {%Compute{result: map}, %{has_more_pages: false}} when is_map(map)->
+        # we reduce the ref.
+        ref = ref-1
+        # we check if this response is the last response.
+        case ref do
+          0 -> # last
+            # TODO: we should convert the map to trytes before proceeding.
+            trytes_list = List.replace_at(trytes_list, qf, map)
+            from = state_map[:from] # from reference.
+            reply(from, {:ok, trytes_list})
+            # now we stop the worker.
+            {:stop, :normal, state}
+          _ -> # not the last
+            # we replace the trytes_list at index qf with
+            # the map result
+            # TODO: we should convert the map to trytes before doing so
+            trytes_list = List.replace_at(trytes_list, qf, map)
+            # we don't longer need the query_state for qf.
+            state_map = Map.delete(state_map, qf)
+            # we return the updated state.
+            state = {{ref, trytes_list}, state_map}
+            {:noreply, state}
+        end
+      {%Compute{result: half_map}, %{has_more_pages: true, paging_state: p_state}} ->
+        # create new bundle query to fetch the remaining row(transaction's row)
+        # we fetch the opts.
+        %{opts: opts} = query_state
+        # we add paging state to the opts.
+        opts = Map.put(opts, :paging_state, p_state)
+        # we pass the opts as an argument to generate bundle query with paging_state.
+        {ok?, _, query_state} = Helper.bundle_query_from_opts(opts)
+        # we assign half_map as acc to query_state
+        query_state = Map.put(query_state, :acc, half_map)
+        # we update query_state in state_map
+        state_map = Map.put(state_map, qf, query_state)
+        state = {{ref, trytes_list}, state_map}
+        # verfiy to proceed or break.
+        ok?(ok?, state_map, state)
     end
   end
 
@@ -326,7 +408,7 @@ defmodule ExtendedApi.Worker.GetTrytes do
       :ok ->
         {:noreply, state}
       _ ->
-        # we break and response.
+        # we break and respond.
         from = state_map[:from] # this the caller reference.
         reply(from, {:error, {:dead_shard_stage, ok?} } )
         {:stop, :normal, state}
