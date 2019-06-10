@@ -7,4 +7,8 @@ defmodule ExtendedApiWeb.CommandView do
     %{trytes: trytes}
   end
 
+  def render("bundles.json", %{hashes: hashes}) do
+    %{hashes: hashes}
+  end
+
 end

@@ -22,6 +22,15 @@ defmodule ExtendedApiWeb.ErrorView do
   end
 
   @doc """
+    This is a render view function which handle
+    invalid findTransactions API call.
+  """
+  @spec render(binary, map) :: Plug.Conn.t
+  def render("findTransactions.json", _) do
+    %{error: "invaild parameters value"}
+  end
+
+  @doc """
     This is a render view function which handle the
     Api call has not specified command or specified
     invalid/unsupported command.
