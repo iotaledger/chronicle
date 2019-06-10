@@ -2,12 +2,13 @@ defmodule ExtendedApiWeb.CommandController do
 
   use ExtendedApiWeb, :controller
   alias ExtendedApi.Worker.GetTrytes
+  alias ExtendedApi.Worker.FindTransactions.Bundles
 
 
   @doc """
     Show Function which handle "getTrytes" API call.
   """
-  @spec show(map, map) :: Plug.Conn.t
+  @spec show(Plug.Conn.t, map) :: Plug.Conn.t
   def show(conn, %{"command" => "getTrytes"} = params) do
     case params["hashes"] do
       [_|_] = hashes ->
@@ -25,12 +26,12 @@ defmodule ExtendedApiWeb.CommandController do
           {:error, :invalid_type} ->
             # render json invaildType error.
             render_error(conn, "invalidType.json")
-          {:error, err?} ->
+          {:error, _} ->
             # something wrong happen (:dead_shard_stage,
             # scylla read_timeout error)
             render_error(conn, "something.json")
-          :exit, value ->
-            render_error(conn, "timout.json")
+          :exit, _ ->
+            render_error(conn, "timeout.json")
         end
       _ ->
         # respond error if hashes parameter is not provided.
@@ -38,11 +39,46 @@ defmodule ExtendedApiWeb.CommandController do
     end
   end
 
+
+  @doc """
+    Show Function which handle "findTransactions" API call
+    with bundles parameter.
+  """
+  @spec show(Plug.Conn.t, map) :: Plug.Conn.t
+  def show(conn, %{"command" => "findTransactions", "bundles" => bundle_hashes}) do
+    case bundle_hashes do
+      [_|_] ->
+        {:ok, pid} = Bundles.start_link()
+        try do
+          # await on the hashes result.
+          # TODO: pass timeout
+          response? = Bundles.await(pid, bundle_hashes)
+          throw(response?)
+        catch
+          {:ok, hashes} ->
+            # render json response.
+            render(conn, "bundles.json", hashes: hashes)
+          {:error, :invalid_type} ->
+            # render json invaildType error.
+            render_error(conn, "invalidType.json")
+          {:error, _} ->
+            # something wrong happen (:dead_shard_stage,
+            # scylla read_timeout error)
+            render_error(conn, "something.json")
+          :exit, _ ->
+            render_error(conn, "timeout.json")
+        end
+      _ ->
+        # respond error as parameters had invalid values.
+        conn |> render_error("findTransactions.json")
+    end
+  end
+
   @doc """
     Show Function which handle undefined command
     in the API call.
   """
-  @spec show(map, map) :: Plug.Conn.t
+  @spec show(Plug.Conn.t, map) :: Plug.Conn.t
   def show(conn, _) do
     conn |> render_error("command.json")
   end
