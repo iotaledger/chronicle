@@ -5,6 +5,7 @@ defmodule ExtendedApi.Worker.GetTrytes do
     executor: Core.Executor
 
   alias ExtendedApi.Worker.GetTrytes.Helper
+  import ExtendedApi.Worker.Helper
 
   @doc """
     This function handing starting GetTrytes worker.
@@ -27,7 +28,7 @@ defmodule ExtendedApi.Worker.GetTrytes do
     started this processor, it stores a from reference
     and block on the caller
   """
-  @spec handle_call(atom, tuple, map) :: tuple
+  @spec handle_call(tuple, tuple, map) :: tuple
   def handle_call({:get_trytes, hashes}, from, state) do
     send(self(), {:hashes, hashes})
     state_map = Map.put(state, :from, from)
@@ -397,28 +398,6 @@ defmodule ExtendedApi.Worker.GetTrytes do
   def handle_cast({:send?, _, status}, {_, %{from: from}} = state) do
     reply(from, status)
     {:stop, :normal, state}
-  end
-
-  # this check if the query has been sent
-  # to the shard's stage(reporter), and its result
-  # determin whether to stop GetTrytes worker or proceed.
-  @spec ok?(atom, map, tuple) :: tuple
-  defp ok?(ok?, state_map, state) do
-    case ok? do
-      :ok ->
-        {:noreply, state}
-      _ ->
-        # we break and respond.
-        from = state_map[:from] # this the caller reference.
-        reply(from, {:error, {:dead_shard_stage, ok?} } )
-        {:stop, :normal, state}
-    end
-  end
-
-  # this is used internally to reply msg to the caller.
-  @spec reply(tuple, list | tuple) :: :ok
-  defp reply(from, msg) do
-    GenServer.reply(from, msg)
   end
 
   @doc """
