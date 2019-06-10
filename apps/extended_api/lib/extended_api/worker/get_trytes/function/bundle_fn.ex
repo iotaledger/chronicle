@@ -10,7 +10,7 @@ defmodule ExtendedApi.Worker.GetTrytes.BundleFn do
     # NOTE: the result of this function is passed as acc
     to the next row
   """
-  def construct(bh,el,_tx_lb,ts,ix,lx,ex,_ref, [{:lb, lb},{:va, address},{:a, value},{:c, _},{:d, otag},{:e, sigfrag}|_] = row, acc) when lb == el do
+  def construct(bh,el,_tx_lb,ts,ix,lx,_ex,_ref, [{:lb, lb},{:va, address},{:a, value},{:c, _},{:d, otag},{:e, sigfrag}|_], _) when lb == el do
     _fixed_fields(bh,otag,ts,ix,lx,address,value,sigfrag)
   end
   @doc """

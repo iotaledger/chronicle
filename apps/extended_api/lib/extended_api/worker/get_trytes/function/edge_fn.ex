@@ -15,7 +15,6 @@ defmodule ExtendedApi.Worker.GetTrytes.EdgeFn do
     or {:error, reason} if the reporter/shardstage is dead.
   """
   alias ExtendedApi.Worker.GetTrytes.Helper
-  @types [:tinyint, :varint, :varint, :varchar]
 
   @doc """
    This function handle the edge row.
