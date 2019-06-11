@@ -74,7 +74,6 @@ defmodule ExtendedApi.Worker.FindTransactions.Bundles do
     Execute.query(map)
   end
 
-
   # handler functions
 
   @doc """
@@ -86,13 +85,13 @@ defmodule ExtendedApi.Worker.FindTransactions.Bundles do
     query_state = Map.get(state_map, qf)
     # now we decode the buffer using the query_state.
     case Protocol.decode_full(buffer,query_state) do
-      # this indicates the transaction_hashes for bundle_hash state_map[bundle_hash]
+      # this indicates the transaction_hashes for bundle_hash state_map[qf][:bundle_hash]
       # are ready, also it's possible the result: hashes is an empty list, (eg bundle_hash
       # doesn't exist at all, or it's invalid.)
       {%Compute{result: hashes}, %{has_more_pages: false}} ->
         # NOTE: we reduce the ref only when the cycle for bundle_hash
         # is complete, thus empty list means no further
-        # responses are expected for state_map[bundle_hash].
+        # responses are expected for state_map[qf][:bundle_hash].
         ref = ref-1
         # we check if this response is the last response.
         case ref do
@@ -117,7 +116,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Bundles do
             {:noreply, state}
         end
       # this indicates the full transaction_hashes for bundle_hash
-      # state_map[bundle_hash] are not completely ready yet.
+      # state_map[qf][:bundle_hash] are not completely ready yet.
       {%Compute{result: half_hashes}, %{has_more_pages: true, paging_state: p_state}} ->
         # create a new bundle query attached with paging_state
         # to fetch the remaining rows(bundle_hashe's rows)
@@ -160,7 +159,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Bundles do
     # now we decode the buffer using the query_state.
     case Protocol.decode_all(call,buffer,query_state) do
       # this indicates some transaction hashes for bundle hash
-      # state_map[qf][bundle_hash] are might be ready
+      # state_map[qf][:bundle_hash] are might be ready
       {%Compute{result: half_hashes}, query_state} ->
         {:noreply, {{ref, half_hashes ++ hashes_list}, Map.put(state_map, qf, query_state)}}
       %Ignore{state: query_state} ->
@@ -174,7 +173,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Bundles do
     # now we decode the buffer using the query_state.
     case Protocol.decode_end(buffer,query_state) do
       # this indicates transaction hashes for bundle hash
-      # state_map[qf][bundle_hash] are ready.
+      # state_map[qf][:bundle_hash] are ready.
       {%Compute{result: hashes}, %{has_more_pages: false}} ->
         # we reduce the ref.
         ref = ref-1

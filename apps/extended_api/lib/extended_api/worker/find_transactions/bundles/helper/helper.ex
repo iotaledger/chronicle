@@ -41,7 +41,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Bundles.Helper do
 
   @spec bundle_hashes_bundle_queries(list, integer, map) :: tuple
   defp bundle_hashes_bundle_queries(_, _, _) do
-    {:error, :invaild_type}
+    {:error, :invalid_type}
   end
 
   @spec _bundle_hashes_bundle_queries(atom, list, map, integer, map) :: tuple
