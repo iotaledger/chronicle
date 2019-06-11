@@ -27,7 +27,7 @@ defmodule ExtendedApi.Worker.GetTrytes.Helper do
 
   @spec edge_queries(list, map, list, integer) :: tuple
   def edge_queries(_, _, _, _) do
-    {:error, :invaild_type}
+    {:error, :invalid_type}
   end
 
   @spec _edge_queries(atom, list, map, list, integer, map) :: tuple
