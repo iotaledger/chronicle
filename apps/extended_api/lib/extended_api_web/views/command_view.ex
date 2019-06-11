@@ -11,4 +11,8 @@ defmodule ExtendedApiWeb.CommandView do
     %{hashes: hashes}
   end
 
+  def render("addresses.json", %{hashes: hashes, hints: hints}) do
+    %{hashes: hashes, hints: hints}
+  end
+
 end
