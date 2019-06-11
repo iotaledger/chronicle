@@ -45,8 +45,6 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
   @spec handle_info(tuple, map) :: tuple
   def handle_info({:addresses, addresses}, %{from: from} = state_map) do
     # create and send queries to scyllaDB.
-    # there is no need to send queries to edge table,
-    # because we already have the bundle_hashes.
     case Helper.queries(addresses, state_map) do
       {:ok, state} ->
         {:noreply, state}
