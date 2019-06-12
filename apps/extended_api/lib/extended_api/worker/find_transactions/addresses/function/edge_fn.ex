@@ -22,8 +22,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses.EdgeFn do
     # ts indicates bundle_timestamp when label(lb)
     # in (input, output) and 0 when label(lb) = hint.
     ts = Keyword.get(row, :ts)
-    # v2(bh) indicates bundle_hash or "bh" when label =
-    # hint.
+    # v2(bh) indicates bundle_hash.
     bh = Keyword.get(row, :v2)
     # ix indicates current_index when label(lb)
     # in (input, output)

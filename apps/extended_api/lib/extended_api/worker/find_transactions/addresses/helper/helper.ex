@@ -5,11 +5,13 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses.Helper do
     Which is gonna be used by FindTransactions.Bundles worker and its
     row compute module bundle_fn.ex.
   """
-  alias ExtendedApi.Worker.FindTransactions.{Addresses, Bundles.BundleFn}
+  alias ExtendedApi.Worker.FindTransactions.{Addresses, Addresses.EdgeFn, Addresses.BundleFn}
   alias Core.DataModel.{Keyspace.Tangle, Table.Bundle, Table.Edge}
   import OverDB.Builder.Query
 
-  @max_bigint 9223372036854775807
+  @max_bigint 9223372036854775807 # will be used to generate random qf.
+  @initial_acc {:ok, %{}, []} # initial {:ok, queries_state, hint}
+
   # Start of Helper functions for edge table queries ###########################
 
   @doc """
@@ -71,22 +73,32 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses.Helper do
   @spec edge_query(binary, integer) :: tuple
   def edge_query(address, ref, opts \\ nil) do
     {Tangle, Edge}
-    |> select([]) |> type(:stream) |> assign(address: address)
-    |> cql("SELECT * FROM tangle.edge WHERE v1 = ? AND lb IN ?")
+    |> select([:lb,:ts,:v2,:ix,:el]) |> type(:stream)
+    |> assign(address: address, acc: @initial_acc)
+    |> cql("SELECT lb,ts,v2,ix,el FROM tangle.edge WHERE v1 = ? AND lb IN ?")
     |> values([{:varchar, address}, {{:list, :tinyint}, [10,20,60]}])
     |> opts(opts || %{function: {EdgeFn, :bundle_queries, [address]}})
     |> pk([v1: address]) |> prepare?(true) |> reference({:edge, ref})
     |> Addresses.query()
   end
 
+  # Start of Helper functions for bundle table queries ###########################
+
   @doc """
     This function generates the query for a given bundle hash.
     it takes bundle_hash, label, timestamp, current_index.
+    the expected query result should be a list of rows where
+    each row should contain transaction hash at current_index.
+    for example: current_index = 0 for a bundle_hash_x.
+    should return all the transactions_hashes(re/attachment)
+    at index = 0.
+    Anyway this function returns tuple.
   """
   @spec bundle_query(binary, integer, integer, integer, map) :: tuple
   def bundle_query(bundle_hash, label, ts, ix, opts \\ %{function: {BundleFn, :construct}}) do
     {Tangle, Bundle}
-    |> select([:b]) |> type(:stream) |> assign(bundle_hash: bundle_hash, current_index: ix)
+    |> select([:b]) |> type(:stream)
+    |> assign(bundle_hash: bundle_hash, current_index: ix, label: label, timestamp: ts)
     |> cql("SELECT b FROM tangle.bundle WHERE bh = ? AND lb = ? AND ts = ? AND ix = ?")
     |> values([{:varchar, bundle_hash}, {:tinyint, label}, {:varint, ts}, {:varint, ix}])
     |> opts(opts)
