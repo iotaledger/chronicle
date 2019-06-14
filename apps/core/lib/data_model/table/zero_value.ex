@@ -46,10 +46,13 @@ defmodule Core.DataModel.Table.ZeroValue do
     column :lb, :tinyint
     column :ts, :varint
     column :v2, :varchar
+    column :ex, :varchar
     column :ix, :varint
+    column :el, :varint
     column :lx, :varint
+    column :sx, :varchar
     partition_key [:v1, :yy, :mm]
-    cluster_columns [:lb, :ts, :v2, :ix]
+    cluster_columns [:lb, :ts, :v2, :ex, :ix]
     with_options [
     clustering_order_by: [
       lb: :asc,
