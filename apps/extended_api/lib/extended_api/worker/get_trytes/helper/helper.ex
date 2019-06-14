@@ -9,56 +9,55 @@ defmodule ExtendedApi.Worker.GetTrytes.Helper do
   alias Core.DataModel.{Keyspace.Tangle, Table.Bundle, Table.Edge}
   import OverDB.Builder.Query
 
+  @edge_cql "SELECT lb,ts,v2,ex,ix,el,lx FROM tangle.edge WHERE v1 = ? AND lb IN ?"
+  @bundle_cql "SELECT lb,va,a,c,d,e,f,g,h,i FROM tangle.bundle WHERE bh = ? AND lb IN ? AND ts = ? AND ix = ? AND id IN ?"
   # Start of Helper functions for Edge table queries ###########################
 
-  @spec edge_queries(list, map, list, integer) :: tuple
-  def edge_queries(hashes, state, trytes_list \\ [], ref \\ 0)
-  def edge_queries([hash | rest_hashes], state, trytes_list, ref) when is_binary(hash) do
+  @spec queries(list, map,list, list, integer) :: tuple
+  def queries(hashes, state, queries_states_list \\ [], trytes_list \\ [], ref \\ 0)
+  def queries(hashes, state, queries_states_list, trytes_list, ref) do
+    _queries(hashes, state, queries_states_list, trytes_list, ref)
+  end
+
+  @spec queries(list, map,list, list, integer) :: tuple
+  defp _queries([hash | rest], state, queries_states_list, trytes_list, ref) when is_binary(hash) do
     # first we create edge query
     {ok?, _,q_s} = edge_query(hash, ref)
     # we ask this function to put query_state and proceed or break.
-    _edge_queries(ok?, rest_hashes, state, trytes_list, ref, q_s)
+    _queries(ok?, rest, state, queries_states_list, trytes_list, ref, q_s)
   end
 
-  @spec edge_queries(list, map, list, integer) :: tuple
-  def edge_queries([], state, trytes_list, ref) do
-    {:ok, { {ref, trytes_list}, state} }
+  @spec _queries(list, map, list,list, integer) :: tuple
+  defp _queries([], state, queries_states_list, trytes_list, ref) do
+    {:ok, Enum.into(queries_states_list, %{ref: ref, trytes: trytes_list})|> Map.merge(state)}
   end
 
-  @spec edge_queries(list, map, list, integer) :: tuple
-  def edge_queries(_, _, _, _) do
+  @spec _queries(list, map, list,list, integer) :: tuple
+  defp _queries(_, _, _, _,_) do
     {:error, :invalid_type}
   end
 
-  @spec _edge_queries(atom, list, map, list, integer, map) :: tuple
-  defp _edge_queries(:ok ,rest_hashes, state, trytes_list, ref, q_s) do
+  @spec _queries(atom, list, map, list,list, integer, map) :: tuple
+  defp _queries(:ok ,rest, state, queries_states_list, trytes_list, ref, q_s) do
     # :ok indicates ref => q_s has been received by the shard's stage.
-    # therefore we should put that in state and increase the ref.
-    {new_ref, trytes_list, state} = _put_query_state(trytes_list, ref, q_s, state)
-    # now loop through the rest_hashes with updated ref/trytes_list.
-    edge_queries(rest_hashes, state, trytes_list, new_ref)
+    # now loop through the rest(rest_hashes) with updated queries_states_list/ref/trytes_list.
+    _queries(rest, state, [{ref, q_s} | queries_states_list], [nil | trytes_list], ref+1)
   end
 
-  @spec _edge_queries(term, list, map, list, integer, map) :: tuple
-  defp _edge_queries(ok?,_, _, _, _, _) do
+  @spec _queries(term, list, map, list,list, integer, map) :: tuple
+  defp _queries(ok?,_, _, _, _, _,_) do
     {:error, ok?}
   end
 
   @spec edge_query(binary, integer) :: tuple
   def edge_query(hash, ref) do
     {Tangle, Edge}
-    |> select([]) |> type(:stream) |> assign(hash: hash)
-    |> cql("SELECT * FROM tangle.edge WHERE v1 = ? AND lb IN ?")
+    |> select([:lb,:ts,:v2,:ex,:ix,:el,:lx]) |> type(:stream) |> assign(hash: hash)
+    |> cql(@edge_cql)
     |> values([{:varchar, hash}, {{:list, :tinyint}, [30,40]}])
     |> opts(%{function: {EdgeFn, :bundle_queries, [ref]}})
     |> pk([v1: hash]) |> prepare?(true) |> reference({:edge, ref})
     |> GetTrytes.query()
-  end
-
-  @spec _put_query_state(list, integer, map, map) :: tuple
-  defp _put_query_state(trytes_list, ref, q_s, state) do
-    state = Map.put(state, ref, q_s)
-    {ref+1, [nil | trytes_list], state}
   end
 
   # Start of Helper functions for Bundle table queries #########################
@@ -70,7 +69,7 @@ defmodule ExtendedApi.Worker.GetTrytes.Helper do
     {Tangle, Bundle}
     |> select([:lb, :va, :a, :c, :d, :e, :f, :g, :h, :i]) |> type(:stream)
      # NOTE: we had to use this statement till ScyllaDB's bug get resolved (https://github.com/scylladb/scylla/issues/4509)
-    |> cql("SELECT lb,va,a,c,d,e,f,g,h,i FROM tangle.bundle WHERE bh = ? AND lb IN ? AND ts = ? AND ix = ? AND id IN ?")
+    |> cql(@bundle_cql) # check at the top of module to know the current cql statement.
     |> values([{:varchar, bh}, {{:list, :tinyint}, [addr_lb, tx_lb]}, {:varint, ts}, {:varint, ix}, {{:list, :varchar}, ["addr", ex]}])
     |> pk([bh: bh]) |> prepare?(true) |> reference({:bundle, ref})
     |> opts(opts || %{function: {BundleFn, :construct, [bh,addr_lb,tx_lb,ts,ix,lx,ex,ref]}})
@@ -80,6 +79,7 @@ defmodule ExtendedApi.Worker.GetTrytes.Helper do
   @doc """
     This function generates and execute bundle_query from opts
     It's intended to make sure to add the paging_state(if any)
+    and append the arguments ( bh, addr_lb,tx_lb, etc)
   """
   @spec bundle_query_from_opts(map) :: tuple
   def bundle_query_from_opts(%{function: {_, _, args}} = opts) do
