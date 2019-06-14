@@ -46,16 +46,17 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses.EdgeFn do
   @doc """
    This function handle the edge row.
   """
-  @spec bundle_queries(binary, Keyword.t, tuple) :: tuple
-  def bundle_queries(address, [{:lb, 60},{:el, el}|_], %{hints: hints} = acc) do
+  @spec bundle_queries(binary, Keyword.t, map) :: tuple
+  def bundle_queries(address, [{:lb, 60},{:el, el}|_], acc) when is_map(acc) do
     # lb is hint = 60.
     # el indicates extra_label(recent_timestamp) when
     # label(lb) = hint = 60.
     # first we convert el(recent_timestamp) to year/month
     # create hint map
     %{year: year, month: month} = DateTime.from_unix(el)
+    # there is possibility for one hint only per address.
     hint = %{address: address, year: year, month: month}
-    %{acc | hints: [hint| hints]}
+    %{acc | hint: hint}
   end
 
   @doc """
