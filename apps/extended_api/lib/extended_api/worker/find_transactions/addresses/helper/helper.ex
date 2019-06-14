@@ -10,8 +10,9 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses.Helper do
   import OverDB.Builder.Query
 
   @max_bigint 9223372036854775807 # will be used to generate random qf.
-  @initial_acc {:ok, %{}, []} # initial {:ok, queries_state, hint}
-
+  @initial_acc %{queries_states: [], hint: []} # initial acc
+  @bundle_cql "SELECT b FROM tangle.bundle WHERE bh = ? AND lb = ? AND ts = ? AND ix = ?"
+  @edge_cql "SELECT lb,el,ts,v2,ix FROM tangle.edge WHERE v1 = ? AND lb IN ?"
   # Start of Helper functions for edge table queries ###########################
 
   @doc """
@@ -22,60 +23,51 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses.Helper do
       {:error, term} : error occurs either because of invalid
         bundle-hash type or dead shard stage in the query engine.
   """
-  @spec queries(list, map, integer) :: {:ok, integer, map} | {:error, term}
-  def queries(addresses, state, ref \\ 0)
-  def queries(addresses, state, ref) do
-    addresses_edge_queries(addresses, state, ref)
+  @spec queries(list, map,list integer) :: {:ok, map} | {:error, term}
+  def queries(addresses, state, queries_states_list \\ [], ref \\ 0)
+  def queries(addresses, state, queries_states_list, ref) do
+    _queries(addresses, state, queries_states_list, ref)
   end
 
-  @spec addresses_edge_queries(list, map, integer) :: tuple
-  defp addresses_edge_queries([address | rest], state, ref) when is_binary(address) do
+  @spec _queries(list, map,list, integer) :: tuple
+  defp _queries([address | rest], state,queries_states_list, ref) when is_binary(address) do
     {ok?, _, q_s} = edge_query(address, ref)
-    _addresses_edge_queries(ok?, rest, state, ref, q_s)
+    _queries(ok?, rest, state,queries_states_list, ref, q_s)
   end
 
-  @spec addresses_edge_queries(list, map, integer) :: tuple
-  defp addresses_edge_queries([], state, ref) do
+  @spec _queries(list, map,list, integer) :: tuple
+  defp _queries([], state, queries_states_list, ref) do
     # ref indicates the total number of queries.
-    # [] on left is the initial hashes_list
-    # [] on right is the initial hints_list
-    # state is the state_map which hold all the queries_states.
-    state = {{ref, {[], []}}, state}
+    # [] is the initial hashes_list/hints_list.
+    # state is the state which hold all the queries_states.
     # updated worker's state.
-    {:ok, state}
+    {:ok, Enum.into(queries_states_list, %{ref: ref, hashes: [], hints: [] }) |> Map.merge(state)}
   end
 
-  @spec addresses_edge_queries(list, map, integer) :: tuple
-  defp addresses_edge_queries(_, _, _) do
+  @spec _queries(list, map,list, integer) :: tuple
+  defp _queries(_, _, _,_) do
     {:error, :invalid_type}
   end
 
-  @spec _addresses_edge_queries(atom, list, map, integer, map) :: tuple
-  defp _addresses_edge_queries(:ok ,rest, state, ref, q_s) do
+  @spec _queries(atom, list, map,list, integer, map) :: tuple
+  defp _queries(:ok ,rest, state,queries_states_list, ref, q_s) do
     # :ok indicates ref => q_s has been received by the shard's stage.
     # therefore we should put that in state and increase the ref.
-    {new_ref, state} = _put_query_state(ref, q_s, state)
     # now loop through the rest with updated ref/state.
-    addresses_edge_queries(rest, state, new_ref)
+    _queries(rest, state,[{ref,q_s} | queries_states_list], ref+1)
   end
 
-  @spec _addresses_edge_queries(term, list, map, integer, map) :: tuple
-  defp _addresses_edge_queries(ok?,_, _, _, _) do
+  @spec _queries(term, list, map,list, integer, map) :: tuple
+  defp _queries(ok?,_, _, _, _,_) do
     {:error, ok?}
   end
 
-  @spec _put_query_state(integer, map, map) :: tuple
-  defp _put_query_state(ref, q_s, state) do
-    state = Map.put(state, ref, q_s)
-    {ref+1, state}
-  end
-
-  @spec edge_query(binary, integer) :: tuple
+  @spec edge_query(binary, integer, nil | map) :: tuple
   def edge_query(address, ref, opts \\ nil) do
     {Tangle, Edge}
-    |> select([:lb,:ts,:v2,:ix,:el]) |> type(:stream)
+    |> select([:lb,:el,:ts,:v2,:ix]) |> type(:stream)
     |> assign(address: address, acc: @initial_acc)
-    |> cql("SELECT lb,ts,v2,ix,el FROM tangle.edge WHERE v1 = ? AND lb IN ?")
+    |> cql(@edge_cql)
     |> values([{:varchar, address}, {{:list, :tinyint}, [10,20,60]}])
     |> opts(opts || %{function: {EdgeFn, :bundle_queries, [address]}})
     |> pk([v1: address]) |> prepare?(true) |> reference({:edge, ref})
@@ -99,7 +91,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses.Helper do
     {Tangle, Bundle}
     |> select([:b]) |> type(:stream)
     |> assign(bundle_hash: bundle_hash, current_index: ix, label: label, timestamp: ts)
-    |> cql("SELECT b FROM tangle.bundle WHERE bh = ? AND lb = ? AND ts = ? AND ix = ?")
+    |> cql(@bundle_cql)
     |> values([{:varchar, bundle_hash}, {:tinyint, label}, {:varint, ts}, {:varint, ix}])
     |> opts(opts)
     |> pk([bh: bundle_hash]) |> prepare?(true) |> reference({:bundle, :rand.uniform(@max_bigint)})

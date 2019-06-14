@@ -9,7 +9,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
   alias ExtendedApi.Worker.FindTransactions.Addresses.Helper
   import ExtendedApi.Worker.Helper
 
-  @edge_cql "SELECT * FROM tangle.edge WHERE v1 = ? AND lb IN ?"
+  @edge_cql "SELECT lb,el,ts,v2,ix FROM tangle.edge WHERE v1 = ? AND lb IN ?"
   @bundle_cql "SELECT b FROM tangle.bundle WHERE bh = ? AND lb = ? AND ts = ? AND ix = ?"
   @doc """
     This function start FindTransactions.Addresses worker.
@@ -35,8 +35,8 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
   @spec handle_call(tuple, tuple, map) :: tuple
   def handle_call({:find_transactions, addresses}, from, state) do
     send(self(), {:addresses, addresses})
-    state_map = Map.put(state, :from, from)
-    {:noreply, state_map}
+    state = Map.put(state, :from, from)
+    {:noreply, state}
   end
 
   @doc """
@@ -45,9 +45,9 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
     if any interrupt occur.
   """
   @spec handle_info(tuple, map) :: tuple
-  def handle_info({:addresses, addresses}, %{from: from} = state_map) do
+  def handle_info({:addresses, addresses}, %{from: from} = state) do
     # create and send queries to scyllaDB.
-    case Helper.queries(addresses, state_map) do
+    case Helper.queries(addresses, state) do
       {:ok, state} ->
         {:noreply, state}
       {:error, reason} ->
@@ -82,24 +82,24 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
     This function handles full response of a query from edge table.
   """
   @spec handle_cast(tuple, tuple) :: tuple
-  def handle_cast({:full, {:edge, qf}, buffer}, {{ref, {hashes_list, hints_list}}, state_map} = state) do
-    # first we fetch the query state from the state_map using the qf key.
-    query_state = Map.get(state_map, qf)
+  def handle_cast({:full, {:edge, qf}, buffer}, state) do
+    # first we fetch the query state from the state using the qf key.
+    query_state = Map.get(state, qf)
     # now we decode the buffer using the query_state.
     case Protocol.decode_full(buffer,query_state) do
       # this indicates the queries_states for bundle queries which select transaction_hashes
-      # for address state_map[qf][:address] are ready.
-      {%Compute{result: {:ok, queries_states, hint}}, %{has_more_pages: false}} ->
-        edge_case_has_more_pages_false(queries_states,hint,qf,ref,state_map,hashes_list,hints_list,state)
+      # for address state[qf][:address] are ready.
+      {%Compute{result: result}, %{has_more_pages: false}} when is_map(result) ->
+        edge_case_has_more_pages_false(qf, result, state)
       # this indicates the queries_states for bundle queries which select transaction_hashes
-      # for address state_map[qf][:address] are not completely ready, because
+      # for address state[qf][:address] are not completely ready, because
       # there still remaining address's rows should be retrieved using paging_state.
-      {%Compute{result: {:ok, queries_states, hint}}, %{has_more_pages: true, paging_state: p_state}} ->
-        edge_case_has_more_pages_true(query_state, queries_states,hint,qf,ref,state_map,hashes_list,hints_list,p_state)
+      {%Compute{result: result}, query_state} when is_map(result) ->
+        edge_case_has_more_pages_true(qf, result, query_state, state)
       # this is {:error, _} handler
       {%Compute{result: {:error, reason}}, _} ->
         # we break.
-        from = state_map[:from] # this the caller reference.
+        from = state[:from] # this the caller reference.
         # respond
         reply(from, {:error, reason})
         # stop worker
@@ -115,11 +115,11 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
         # we pass the address,qf,opts as arguments to generate edge query.
         {ok?, _, _} = Helper.edge_query(address, qf, opts)
         # verfiy to proceed or break.
-        ok?(ok?, state_map, state)
+        ok?(ok?, state)
       # remaining error handler. ( error, eg read_timeout, etc)
       %Error{reason: reason} ->
         # we break.
-        from = state_map[:from] # this the caller reference.
+        from = state[:from] # this the caller reference.
         # respond
         reply(from, {:error, reason})
         # stop worker
@@ -132,21 +132,21 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
     This function handles full response of a query from bundle table.
   """
   @spec handle_cast(tuple, tuple) :: tuple
-  def handle_cast({:full, {:bundle, qf}, buffer}, {{ref, {hashes_list, hints_list}}, state_map} = state) do
-    # first we fetch the query state from the state_map using the qf key.
-    query_state = Map.get(state_map, qf)
+  def handle_cast({:full, {:bundle, qf}, buffer}, state) do
+    # first we fetch the query state from the state using the qf key.
+    query_state = Map.get(state, qf)
     # now we decode the buffer using the query_state.
     case Protocol.decode_full(buffer,query_state) do
       # this indicates the transaction_hashes for bundle_hash
-      # state_map[qf][:bundle_hash] at current_index
-      # state_map[qf][:current_index] are ready.
+      # state[qf][:bundle_hash] at current_index
+      # state[qf][:current_index] are ready.
       {%Compute{result: hashes}, %{has_more_pages: false}} ->
-        bundle_case_has_more_pages_false(qf, ref, state_map, hashes, hashes_list, hints_list, state)
+        bundle_case_has_more_pages_false(qf, hashes, state)
       # this indicates the half_hashes are in half state.
       # which mean there still more rows(transactions_hashes)
       # have to be fetch with further queries requests.
-      {%Compute{result: half_hashes}, %{has_more_pages: true, paging_state: p_state}} ->
-        bundle_case_has_more_pages_true(p_state, query_state,qf,ref,state_map,half_hashes,hashes_list,hints_list)
+      {%Compute{result: half_hashes}, query_state} ->
+        bundle_case_has_more_pages_true(qf, half_hashes, query_state,state)
       # this is unprepared error handler.
       %Error{reason: :unprepared} ->
         # first we use hardcoded cql statement of bundle query.
@@ -159,11 +159,11 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
         # we pass the address,qf,opts as arguments to generate bundle query.
         {ok?, _, _query_state} = Helper.bundle_query(bh, el, ts, ix, opts)
         # verfiy to proceed or break.
-        ok?(ok?, state_map, state)
+        ok?(ok?, state)
       # remaining error handler. ( error, eg read_timeout, etc)
       %Error{reason: reason} ->
         # we break.
-        from = state_map[:from] # this the caller reference.
+        from = state[:from] # this the caller reference.
         # respond
         reply(from, {:error, reason})
         # stop worker
@@ -173,53 +173,57 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
 
   # stream handler functions
   @spec handle_cast(tuple, tuple) :: tuple
-  def handle_cast({call, {:edge, qf}, buffer}, {{ref, response_state}, state_map} = state) when call in [:start, :stream] do
-    # first we fetch the query state from the state_map using the qf key.
-    query_state = Map.get(state_map, qf)
+  def handle_cast({call, {:edge, qf}, buffer}, %{ref: ref} = state) when call in [:start, :stream] do
+    # first we fetch the query state from the state using the qf key.
+    query_state = Map.get(state, qf)
     # now we decode the buffer using the query_state.
     case Protocol.decode_all(call,buffer,query_state) do
       # this indicates some queries_states initited by
-      # state_map[qf][:address] rows are might be ready
+      # state[qf][:address] rows are might be ready
       # NOTE: it's impossible to have hint with :start/:stream handler,
-      {%Compute{result: {:ok, queries_states, _hint}}, query_state} ->
+      {%Compute{result: %{queries_states: queries_states}}, query_state} ->
         # update ref to add the new queries_states
-        ref = map_size(queries_states) + ref
-        # update state_map
-        state_map = Map.put(state_map, qf, query_state)
+        ref = length(queries_states) + ref
+        # update state
+        state = %{
+          Enum.into(queries_states, state) |
+          :ref => ref,
+          qf => query_state
+        }
         # return updated state
-        {:noreply, {{ref, response_state}, state_map}}
+        {:noreply, state}
       {%Compute{result: {:error, reason}}, _} ->
         # we break.
-        from = state_map[:from] # this the caller reference.
+        from = state[:from] # this the caller reference.
         # respond
         reply(from, {:error, reason})
         # stop worker
         {:stop, :normal, state}
       %Ignore{state: query_state} ->
-        state = put_elem(state, 1, Map.put(state_map, qf, query_state))
+        state = %{state | qf => query_state}
         {:noreply, state}
     end
   end
 
   @spec handle_cast(tuple, tuple) :: tuple
-  def handle_cast({:end, {:edge, qf}, buffer}, {{ref, {hashes_list, hints_list}}, state_map} = state) do
-    # first we fetch the query state from the state_map using the qf key.
-    query_state = Map.get(state_map, qf)
+  def handle_cast({:end, {:edge, qf}, buffer}, state) do
+    # first we fetch the query state from the state using the qf key.
+    query_state = Map.get(state, qf)
     # now we decode the buffer using the query_state.
     case Protocol.decode_full(buffer,query_state) do
       # this indicates the queries_states for bundle queries which select transaction_hashes
-      # for address state_map[qf][:address] are ready.
-      {%Compute{result: {:ok, queries_states, hint}}, %{has_more_pages: false}} ->
-        edge_case_has_more_pages_false(queries_states,hint,qf,ref,state_map,hashes_list,hints_list,state)
+      # for address state[qf][:address] are ready.
+      {%Compute{result: result}, %{has_more_pages: false}} when is_map(result) ->
+        edge_case_has_more_pages_false(qf, result, state)
       # this indicates the queries_states for bundle queries which select transaction_hashes
-      # for address state_map[qf][:address] are not completely ready, because
+      # for address state[qf][:address] are not completely ready, because
       # there still remaining address's rows should be retrieved using paging_state.
-      {%Compute{result: {:ok, queries_states, hint}}, %{has_more_pages: true, paging_state: p_state}} ->
-        edge_case_has_more_pages_true(query_state, queries_states,hint,qf,ref,state_map,hashes_list,hints_list,p_state)
+      {%Compute{result: result}, query_state} when is_map(result) ->
+        edge_case_has_more_pages_true(qf, result, query_state, state)
       # this is {:error, _} handler
       {%Compute{result: {:error, reason}}, _} ->
         # we break.
-        from = state_map[:from] # this the caller reference.
+        from = state[:from] # this the caller reference.
         # respond
         reply(from, {:error, reason})
         # stop worker
@@ -228,40 +232,46 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
   end
 
   @spec handle_cast(tuple, tuple) :: tuple
-  def handle_cast({call, {:bundle, qf}, buffer}, {{ref, {hashes_list, _} = response_state}, state_map} = state) when call in [:start, :stream] do
-    # first we fetch the query state from the state_map using the qf key.
-    query_state = Map.get(state_map, qf)
+  def handle_cast({call, {:bundle, qf}, buffer}, state) when call in [:start, :stream] do
+    # first we fetch the query state from the state using the qf key.
+    query_state = Map.get(state, qf)
     # now we decode the buffer using the query_state.
     case Protocol.decode_all(call,buffer,query_state) do
-      # this indicates some hashes for state_map[qf][:bundle_hash]
+      # this indicates some hashes for state[qf][:bundle_hash]
       # are might be ready
       {%Compute{result: hashes}, query_state} ->
-        # add hashes to hashes_list
-        hashes_list = hashes ++ hashes_list
-        response_state = put_elem(response_state, 1, hashes_list)
-        {:noreply, {{ref, response_state}, Map.put(state_map, qf, query_state)}}
+        state = %{
+          state |
+          # add hashes to hashes_list
+          :hashes => hashes ++ state[:hashes],
+          qf => query_state
+        }
+        {:noreply, state}
       %Ignore{state: query_state} ->
-        state = put_elem(state, 1, Map.put(state_map, qf, query_state))
+        state = %{
+          state |
+          qf => query_state
+        }
         {:noreply, state}
     end
   end
 
   @spec handle_cast(tuple, tuple) :: tuple
-  def handle_cast({:end, {:bundle, qf}, buffer}, {{ref, {hashes_list, hints_list}}, state_map} = state) do
-    # first we fetch the query state from the state_map using the qf key.
-    query_state = Map.get(state_map, qf)
+  def handle_cast({:end, {:bundle, qf}, buffer}, state) do
+    # first we fetch the query state from the state using the qf key.
+    query_state = Map.get(state, qf)
     # now we decode the buffer using the query_state.
     case Protocol.decode_end(buffer,query_state) do
       # this indicates the transaction_hashes for bundle_hash
-      # state_map[qf][:bundle_hash] at current_index
-      # state_map[qf][:current_index] are ready.
+      # state[qf][:bundle_hash] at current_index
+      # state[qf][:current_index] are ready.
       {%Compute{result: hashes}, %{has_more_pages: false}} ->
-        bundle_case_has_more_pages_false(qf, ref, state_map, hashes, hashes_list, hints_list, state)
+        bundle_case_has_more_pages_false(qf, hashes, state)
       # this indicates the half_hashes are in half state.
       # which mean there still more rows(transactions_hashes)
       # have to be fetch with further queries requests.
-      {%Compute{result: half_hashes}, %{has_more_pages: true, paging_state: p_state}} ->
-        bundle_case_has_more_pages_true(p_state, query_state,qf,ref,state_map,half_hashes,hashes_list,hints_list)
+      {%Compute{result: half_hashes}, query_state} ->
+        bundle_case_has_more_pages_true(qf, half_hashes, query_state,state)
     end
   end
 
@@ -284,8 +294,8 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
   end
 
   @doc false
-  @spec bundle_case_has_more_pages_false(integer,integer,map,list,list,list,tuple) :: tuple
-  defp bundle_case_has_more_pages_false(qf,ref,state_map,hashes,hashes_list,hints_list,state) do
+  @spec bundle_case_has_more_pages_false(integer,list, map) :: tuple
+  defp bundle_case_has_more_pages_false(qf, hashes, %{ref: ref, hashes: hashes_list} = state) do
     # hashes might be an empty list in rare situations(data consistency
     # between edge_table and bundle_table or between replicas).
     # we reduce ref as the cycle for qf completed.
@@ -297,97 +307,101 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
         # (or might be the first and last)
         # therefore we fulfil the API call.
         # First we fetch the from reference for the caller processor.
-        from = state_map[:from] # from reference.
-        reply(from, {:ok, hashes ++ hashes_list, hints_list})
+        from = state[:from] # from reference.
+        reply(from, {:ok, hashes ++ hashes_list, state[:hints]})
         # now we stop the worker.
         {:stop, :normal, state}
       _ ->
         # this indicates it's not the last response.
         # (mean there are other queries under progress.)
-        # we preappend hashes with hashes_list.
-        hashes_list = hashes  ++ hashes_list
-        # no longer need query_state for qf in state_map.
-        state_map = Map.delete(state_map, qf)
-        # update worker's state.
-        state = {{ref, {hashes_list, hints_list}}, state_map}
+        # no longer need query_state for qf in state.
+        state = %{ Map.delete(state, qf) |
+          # we preappend hashes with hashes_list.
+          hashes: hashes ++ hashes_list,
+          ref: ref
+        }
         # return updated state.
         {:noreply, state}
     end
   end
 
   @doc false
-  @spec bundle_case_has_more_pages_true(binary, map, integer, integer, map, list, list, list) :: tuple
-  defp bundle_case_has_more_pages_true(p_state,query_state,qf,ref,state_map,half_hashes,hashes_list,hints_list) do
+  @spec bundle_case_has_more_pages_true(integer, list, map, map) :: tuple
+  defp bundle_case_has_more_pages_true(
+      qf,
+      half_hashes,
+      %{opts: opts, bundle_hash: bh, current_index: ix, label: el, timestamp: ts, paging_state: p_state},
+      %{hashes: hashes_list} = state) do
     # pattern matching on opts,bh,ix,el,ts from the query_state,
-    # as we need those to issue new bundle_query.
-    %{opts: opts, bundle_hash: bh, current_index: ix, label: el, timestamp: ts}
-      = query_state
+    # as we needed(opts, bh, ix,el, ts) to issue new bundle_query.
     # add paging_state to opts
     opts = Map.put(opts, :paging_state, p_state)
     # we pass bh,el,ts,ix,opts as arguments
     # to generate bundle query with paging_state.
     {ok?, _, query_state} = Helper.bundle_query(bh, el, ts, ix, opts)
     # we preappend half_hashes with hashes_list.
-    hashes_list = half_hashes  ++ hashes_list
     # update state
-    state = {{ref, {hashes_list, hints_list}}, %{state_map | qf => query_state}}
+    state = %{state |
+      :hashes => half_hashes  ++ hashes_list,
+      qf => query_state
+      }
     # verfiy to proceed or break.
-    ok?(ok?, state_map, state)
+    ok?(ok?,  state)
   end
 
   @doc false
-  @spec edge_case_has_more_pages_false(map, list, integer, integer, map, list,list,tuple) :: tuple
-  defp edge_case_has_more_pages_false(queries_states,hint,qf,ref,state_map,hashes_list,hints_list,state) do
+  @spec edge_case_has_more_pages_false(integer, map, map) :: tuple
+  defp edge_case_has_more_pages_false(qf, %{queries_states: queries_states, hint: hint}, %{ref: ref, hints: hints_list} = state) do
     # we delete the query_state for qf as it's no longer needed.
-    state_map = Map.delete(state_map, qf)
+    state = Map.delete(state, qf)
     # update ref to include the queries_states count-1.
-    ref = map_size(queries_states) + ref-1
+    ref = length(queries_states) + ref-1
     case ref do
       0 ->
         # this indicates it's the last response
         # (or might be the first and last)
         # therefore we fulfil the API call.
         # First we fetch the from reference for the caller processor.
-        from = state_map[:from] # from reference.
-        reply(from, {:ok, hashes_list, hint ++ hints_list})
+        from = state[:from] # from reference.
+        reply(from, {:ok, state[:hashes], hint ++ hints_list})
         # now we stop the worker.
         {:stop, :normal, state}
       _ ->
-        # merge queries_states map with worker's state_map
-        state_map = Map.merge(state_map, queries_states)
-        # update hints_list with the new hints(if any)
-        hints_list = hint ++ hints_list
-        # create new updated state
-        state = {{ref, {hashes_list, hints_list}}, state_map}
+        # merge queries_states list with worker's state
+        state = %{ Enum.into(queries_states, state) |
+          ref: ref,
+          hints: hint ++ hints_list
+        }
         # return new state
         {:noreply, state}
     end
   end
 
   @doc false
-  @spec edge_case_has_more_pages_true(map, map, binary, integer,integer,map,list,list,binary) :: tuple
-  defp edge_case_has_more_pages_true(query_state, queries_states,hint,qf,ref,state_map,hashes_list,hints_list,p_state) do
+  @spec edge_case_has_more_pages_true(integer, map, map, map) :: tuple
+  defp edge_case_has_more_pages_true(
+      qf,
+      %{paging_state: p_state, opts: opts, address: address},
+      %{queries_states: queries_states, hint: hint},
+      %{ref: ref, hints: hints_list} = state) do
     # create a new edge query attached with paging_state
     # to fetch the remaining rows(address's rows)
-    # Fetch opts, address to add them for the query request.
-    %{opts: opts, address: address} = query_state
+    # Fetched opts, address to add them for the query request.
     # Adding paging_state to the opts.
     opts = Map.put(opts, :paging_state, p_state)
     # we pass the address, qf, opts as arguments
     # to generate edge query with paging_state.
     {ok?, _, query_state} = Helper.edge_query(address, qf, opts)
     # update ref to include the current queries_states count.
-    ref = map_size(queries_states) + ref
-    # update query_state in state_map
-    state_map = %{state_map | qf => query_state}
-    # merge queries_states map with worker's state_map
-    state_map = Map.merge(state_map, queries_states)
-    # update hints_list with the new hints(if any)
-    hints_list = hint ++ hints_list
-    # create new updated state
-    state = {{ref, {hashes_list, hints_list}}, state_map}
+    ref = length(queries_states) + ref
+    # update query_state in state
+    state = %{Enum.into(queries_states, state) |
+     qf => query_state,
+     :ref => ref,
+     :hints => hint ++ hints_list
+    }
     # verfiy to proceed or break.
-    ok?(ok?, state_map, state)
+    ok?(ok?, state)
   end
-  
+
 end

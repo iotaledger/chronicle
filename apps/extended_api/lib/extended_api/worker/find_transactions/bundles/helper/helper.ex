@@ -19,57 +19,50 @@ defmodule ExtendedApi.Worker.FindTransactions.Bundles.Helper do
       {:error, term} : error occurs either because of invalid
         bundle-hash type or dead shard stage in the query engine.
   """
-  @spec queries(list, map, integer) :: {:ok, integer, map} | {:error, term}
-  def queries(bundle_hashes, state, ref \\ 0)
-  def queries(bundle_hashes, state, ref) do
-    bundle_hashes_bundle_queries(bundle_hashes, state, ref)
+  @spec queries(list, map, list, integer) :: {:ok, map} | {:error, term}
+  def queries(bundle_hashes, state, queries_states_list \\ [], ref \\ 0)
+  def queries(bundle_hashes, state, queries_states_list, ref) do
+    _queries(bundle_hashes, state, queries_states_list, ref)
   end
 
-  @spec bundle_hashes_bundle_queries(list, map, integer) :: tuple
-  defp bundle_hashes_bundle_queries([bundle_hash | rest], state, ref) when is_binary(bundle_hash) do
-    {ok?, _, q_s} = bundle_hash_bundle_query(bundle_hash, ref)
-    _bundle_hashes_bundle_queries(ok?, rest, state, ref, q_s)
+  @spec _queries(list, map,list, integer) :: tuple
+  defp _queries([bundle_hash | rest], state, queries_states_list, ref) when is_binary(bundle_hash) do
+    {ok?, _, q_s} = bundle_query(bundle_hash, ref)
+    _queries(ok?, rest, state, queries_states_list, ref, q_s)
   end
 
-  @spec bundle_hashes_bundle_queries(list, map, integer) :: tuple
-  defp bundle_hashes_bundle_queries([], state, ref) do
+  @spec _queries(list, map, list, integer) :: tuple
+  defp _queries([], state, queries_states_list, ref) do
     # ref indicates the total number of queries.
     # [] is the initial hashes_list
-    # state is the state_map which hold all the queries_states.
-    {:ok, {{ref, []}, state}}
+    # state is the state which hold all the queries_states.
+    {:ok, Enum.into(queries_states_list, %{ref: ref, hashes: []}) |> Map.merge(state)}
   end
 
-  @spec bundle_hashes_bundle_queries(list, integer, map) :: tuple
-  defp bundle_hashes_bundle_queries(_, _, _) do
+  @spec _queries(list, integer,list, map) :: tuple
+  defp _queries(_, _, _,_) do
     {:error, :invalid_type}
   end
 
-  @spec _bundle_hashes_bundle_queries(atom, list, map, integer, map) :: tuple
-  defp _bundle_hashes_bundle_queries(:ok ,rest, state, ref, q_s) do
+  @spec _queries(atom, list, map,list, integer, map) :: tuple
+  defp _queries(:ok ,rest, state,queries_states_list, ref, q_s) do
     # :ok indicates ref => q_s has been received by the shard's stage.
     # therefore we should put that in state and increase the ref.
-    {new_ref, state} = _put_query_state(ref, q_s, state)
-    # now loop through the rest with updated ref/state.
-    bundle_hashes_bundle_queries(rest, state, new_ref)
+    # now loop through the rest with updated ref/queries_states_list.
+    _queries(rest, state, [{ref, q_s} | queries_states_list], ref+1)
   end
 
-  @spec _bundle_hashes_bundle_queries(term, list, map, integer, map) :: tuple
-  defp _bundle_hashes_bundle_queries(ok?,_, _, _, _) do
+  @spec _queries(term, list, map,list, integer, map) :: tuple
+  defp _queries(ok?,_, _, _, _,_) do
     {:error, ok?}
-  end
-
-  @spec _put_query_state(integer, map, map) :: tuple
-  defp _put_query_state(ref, q_s, state) do
-    state = Map.put(state, ref, q_s)
-    {ref+1, state}
   end
 
   @doc """
     This function generates the query for a given bundle hash.
     it takes bundle-hash and ref which will be used to trace the response.
   """
-  @spec bundle_hash_bundle_query(binary, integer, map) :: tuple
-  def bundle_hash_bundle_query(bundle_hash, ref, opts \\ %{function: {BundleFn, :construct}}) do
+  @spec bundle_query(binary, integer, map) :: tuple
+  def bundle_query(bundle_hash, ref, opts \\ %{function: {BundleFn, :construct}}) do
     {Tangle, Bundle}
     |> select([:b]) |> type(:stream) |> assign(bundle_hash: bundle_hash)
     |> cql("SELECT b FROM tangle.bundle WHERE bh = ? AND lb IN ?")
@@ -79,13 +72,5 @@ defmodule ExtendedApi.Worker.FindTransactions.Bundles.Helper do
     |> Bundles.query()
   end
 
-  @doc """
-    This function generates and execute bundle_query from opts
-    It's intended to make sure to add the paging_state(if any)
-  """
-  @spec bundle_query_from_opts(map) :: tuple
-  def bundle_query_from_opts(%{function: {_, _, args}} = opts) do
-    apply(Helper, :bundle_query, args ++ [opts])
-  end
 
 end

@@ -17,26 +17,26 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses.EdgeFn do
    This function handle the edge row.
   """
   @spec bundle_queries(binary, Keyword.t, tuple) :: tuple
-  def bundle_queries(_address, [{:lb, lb}|_] = row, {:ok, queries_states, _} = acc) when lb != 60 do
+  def bundle_queries(
+      _address,
+      [lb: lb, el: el, ts: ts, v2: bh, ix: ix],
+      %{queries_states: queries_states} = acc)
+      when lb != 60 do # lb != 60 mean it's not a hint.
     # lb indicates label (output, input)....^
     # ts indicates bundle_timestamp when label(lb)
-    # in (input, output) and 0 when label(lb) = hint.
-    ts = Keyword.get(row, :ts)
+    # in (input, output)
     # v2(bh) indicates bundle_hash.
-    bh = Keyword.get(row, :v2)
     # ix indicates current_index when label(lb)
     # in (input, output)
-    ix = Keyword.get(row, :ix)
     # el indicates extra_label(tx-hash or head-hash) when label(lb)
     # in (input, output).
-    el = Keyword.get(row, :el)
     # we are sending the bundle query.
     {ok?, {_, qf}, query_state} =
       Helper.bundle_query(bh, el, ts, ix)
     if ok? == :ok do
       # we put the query_state in queries_states map.
       # we return updated acc
-      put_elem(acc, 1, Map.put(queries_states, qf, query_state))
+      %{acc | queries_states: [{qf, query_state} | queries_states]}
     else
       # we break.
       {:error, {:dead_shard_stage, ok?} }
@@ -47,16 +47,15 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses.EdgeFn do
    This function handle the edge row.
   """
   @spec bundle_queries(binary, Keyword.t, tuple) :: tuple
-  def bundle_queries(address, [{:lb, 60}|_] = row, {:ok, _, hints} = acc) do
+  def bundle_queries(address, [{:lb, 60},{:el, el}|_], %{hints: hints} = acc) do
     # lb is hint = 60.
     # el indicates extra_label(recent_timestamp) when
     # label(lb) = hint = 60.
-    el = Keyword.get(row, :el)
     # first we convert el(recent_timestamp) to year/month
     # create hint map
     %{year: year, month: month} = DateTime.from_unix(el)
     hint = %{address: address, year: year, month: month}
-    put_elem(acc, 2, [hint| hints])
+    %{acc | hints: [hint| hints]}
   end
 
   @doc """
