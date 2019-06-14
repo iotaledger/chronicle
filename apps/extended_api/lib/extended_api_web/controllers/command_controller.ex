@@ -2,7 +2,7 @@ defmodule ExtendedApiWeb.CommandController do
 
   use ExtendedApiWeb, :controller
   alias ExtendedApi.Worker.GetTrytes
-  alias ExtendedApi.Worker.FindTransactions.{Bundles, Addresses}
+  alias ExtendedApi.Worker.FindTransactions.{Bundles, Addresses, Hints}
 
 
   @doc """
@@ -109,6 +109,39 @@ defmodule ExtendedApiWeb.CommandController do
     end
   end
 
+  @doc """
+    Show Function which handle "findTransactions" API call
+    with hints parameter.
+  """
+  @spec show(Plug.Conn.t, map) :: Plug.Conn.t
+  def show(conn, %{"command" => "findTransactions", "hints" => hints}) do
+    case hints do
+      [_|_] ->
+        {:ok, pid} = Hints.start_link()
+        try do
+          # await on the hashes/hints result.
+          # TODO: pass timeout
+          response? = Hints.await(pid, hints)
+          throw(response?)
+        catch
+          {:ok, hashes, hints} ->
+            # render json response.
+            render(conn, "addresses.json", hashes: hashes, hints: hints)
+          {:error, :invalid_type} ->
+            # render json invaildType error.
+            render_error(conn, "invalidType.json")
+          {:error, _} ->
+            # something wrong happen (:dead_shard_stage,
+            # scylla read_timeout error)
+            render_error(conn, "something.json")
+          :exit, _ ->
+            render_error(conn, "timeout.json")
+        end
+      _ ->
+        # respond error as parameters had invalid values.
+        conn |> render_error("findTransactions.json")
+    end
+  end
   @doc """
     Show Function which handle undefined command
     in the API call.
