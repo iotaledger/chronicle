@@ -16,6 +16,5 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints.BundleFn do
   def construct([b: b], acc) do
     [b | acc]
   end
-  
 
 end

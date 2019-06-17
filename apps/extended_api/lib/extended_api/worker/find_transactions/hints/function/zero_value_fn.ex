@@ -34,12 +34,12 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints.ZeroValueFn do
   end
 
   @doc """
-   This function handle when acc is an error.
+   This function handles when acc is an error.
    {:error, {:dead_shard_stage, ok?}}.
    it just return acc to break the api call.
   """
-  @spec bundle_queries(binary, Keyword.t, {:error, tuple}) :: tuple
-  def bundle_queries(_, _, acc) do
+  @spec bundle_queries(Keyword.t, {:error, tuple}) :: tuple
+  def bundle_queries(_, acc) do
     # we keep breaking.
     acc
   end

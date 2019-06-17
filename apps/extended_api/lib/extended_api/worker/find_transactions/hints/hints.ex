@@ -12,7 +12,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
   @bundle_cql "SELECT b FROM tangle.bundle WHERE bh = ? AND lb = ? AND ts = ? AND ix = ?"
 
   @doc """
-    This function start FindTransactions.Hints worker.
+    This function starts FindTransactions.Hints worker.
   """
   @spec start_link() :: tuple
   def start_link() do
@@ -21,7 +21,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
 
 
   @doc """
-    This function initate FindTransactions.Hints worker
+    This function initates FindTransactions.Hints worker.
   """
   @spec init(map) :: tuple
   def init(state) do
@@ -29,7 +29,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
   end
 
   @doc """
-    This function handle the call from the processor which
+    This function handles the call from the processor which
     started this processor, it stores a from reference
     and block on the caller
   """
@@ -46,16 +46,16 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
     if any interrupt occur.
   """
   @spec handle_info(tuple, map) :: tuple
-  def handle_info({:hints, hints}, %{from: from}) do
+  def handle_info({:hints, hints}, %{from: from} = state) do
     # create and send queries to scyllaDB.
-    case Helper.queries(hints, from) do
+    case Helper.queries(hints, state) do
       {:ok, state} ->
         {:noreply, state}
       {:error, reason} ->
         # we break, thus we should return error to client
         # before breaking.
         reply(from, {:error, reason})
-        {:stop, :normal, hints}
+        {:stop, :normal, state}
     end
   end
 
@@ -82,7 +82,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
   @doc """
     This function handles full response of a query from zero_value table.
   """
-  @spec handle_cast(tuple, tuple) :: tuple
+  @spec handle_cast(tuple, map) :: tuple
   def handle_cast({:full, {:zero_value, qf}, buffer}, %{ref: ref, hashes: hashes_list, hints: hints_list} = state) do
     # first we fetch the query state from the state using the qf key.
     query_state = Map.get(state, qf)
@@ -148,11 +148,87 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
     end
   end
 
+  # stream handler functions
+  @spec handle_cast(tuple, map) :: tuple
+  def handle_cast({call, {:zero_value, qf}, buffer}, %{ref: ref} = state) when call in [:start, :stream] do
+    # first we fetch the query state from the state using the qf key.
+    query_state = Map.get(state, qf)
+    # now we decode the buffer using the query_state.
+    case Protocol.decode_all(call,buffer,query_state) do
+      # this indicates some queries_states initited by
+      # state[qf][:hint] rows are might be ready
+      {%Compute{result: queries_states}, query_state} when is_list(queries_states) ->
+        # update ref to add the new queries_states
+        ref = length(queries_states) + ref
+        # update state
+        state = %{
+          Enum.into(queries_states, state) |
+          :ref => ref,
+          qf => query_state
+        }
+        # return updated state
+        {:noreply, state}
+      {%Compute{result: {:error, reason}}, _} ->
+        # we break.
+        from = state[:from] # this the caller reference.
+        # respond
+        reply(from, {:error, reason})
+        # stop worker
+        {:stop, :normal, state}
+      %Ignore{state: query_state} ->
+        state = %{state | qf => query_state}
+        {:noreply, state}
+    end
+  end
+
+  @spec handle_cast(tuple, map) :: tuple
+  def handle_cast({:end, {:zero_value, qf}, buffer}, %{ref: ref, hashes: hashes_list, hints: hints_list} = state) do
+    # first we fetch the query state from the state using the qf key.
+    query_state = Map.get(state, qf)
+    # now we decode the buffer using the query_state.
+    case Protocol.decode_end(buffer,query_state) do
+      # this indicates the queries_states for bundle queries which select transaction_hashes
+      # for hint state[qf][:hint] are ready.
+      {%Compute{result: queries_states}, %{hint: hint} = query_state} when is_list(queries_states) ->
+        # create/update hint
+        hint = Helper.create_hint(hint, query_state[:paging_state])
+        # we delete the query_state for qf as it's no longer needed.
+        state = Map.delete(state, qf)
+        # update ref to include the queries_states count-1.
+        ref = length(queries_states) + ref-1
+        case ref do
+          0 ->
+            # this indicates it's the last response
+            # (or might be the first and last)
+            # therefore we fulfil the API call.
+            # First we fetch the from reference for the caller processor.
+            from = state[:from] # from reference.
+            # we reply with updated hashes_list(if any) and hints.
+            reply(from, {:ok, hashes_list, [hint | hints_list]})
+            # now we stop the worker.
+            {:stop, :normal, state}
+          _ ->
+            # create new updated state
+            state = %{Enum.into(queries_states, state) | ref: ref, hints: [hint | hints_list]}
+            # return new state
+            {:noreply, state}
+        end
+      # this is {:error, _} handler
+      {%Compute{result: {:error, reason}}, _} ->
+        # we break.
+        from = state[:from] # this the caller reference.
+        # respond
+        reply(from, {:error, reason})
+        # stop worker
+        {:stop, :normal, state}
+    end
+  end
+
   @doc """
     This function handles full response of a query from bundle table.
   """
-  @spec handle_cast(tuple, tuple) :: tuple
-  def handle_cast({:full, {:bundle, qf}, buffer}, %{ref: ref, hashes: hashes_list, hints: hints_list} = state) do
+  @spec handle_cast(tuple, map) :: tuple
+  def handle_cast({:full, {:bundle, qf}, buffer}, state) do
     # first we fetch the query state from the state using the qf key.
     query_state = Map.get(state, qf)
     # now we decode the buffer using the query_state.
@@ -161,22 +237,22 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
       # state[qf][:bundle_hash] at current_index
       # state[qf][:current_index] are ready.
       {%Compute{result: hashes}, %{has_more_pages: false}} ->
-        bundle_case_has_more_pages_false(qf,ref,hashes,hashes_list,hints_list,state)
+        bundle_case_has_more_pages_false(qf, hashes, state)
       # this indicates the half_hashes are in half state.
       # which mean there still more rows(transactions_hashes)
       # have to be fetch with further queries requests.
-      {%Compute{result: half_hashes}, %{has_more_pages: true, paging_state: p_state}} ->
-        IO.inspect("arg1")
+      {%Compute{result: half_hashes}, query_state} ->
+        bundle_case_has_more_pages_true(Helper, qf, half_hashes, query_state ,state)
       # this is unprepared error handler.
       %Error{reason: :unprepared} ->
         # first we use hardcoded cql statement of bundle query.
         cql = @bundle_cql
         FastGlobal.delete(cql)
-        # fetch the address,opts from the current query_state, because it might be a
+        # fetch the bh,opts from the current query_state, because it might be a
         # response for paging request.
         %{opts: opts, bundle_hash: bh, current_index: ix, label: el, timestamp: ts}
           = query_state
-        # we pass the address,qf,opts as arguments to generate bundle query.
+          # we pass the bh,el,ts,ix,opts as arguments to generate bundle query.
         {ok?, _, _query_state} = Helper.bundle_query(bh, el, ts, ix, opts)
         # verfiy to proceed or break.
         ok?(ok?, state)
@@ -188,6 +264,50 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
         reply(from, {:error, reason})
         # stop worker
         {:stop, :normal, state}
+    end
+  end
+
+  @spec handle_cast(tuple, map) :: tuple
+  def handle_cast({call, {:bundle, qf}, buffer}, state) when call in [:start, :stream] do
+    # first we fetch the query state from the state using the qf key.
+    query_state = Map.get(state, qf)
+    # now we decode the buffer using the query_state.
+    case Protocol.decode_all(call,buffer,query_state) do
+      # this indicates some hashes for state[qf][:bundle_hash]
+      # are might be ready
+      {%Compute{result: hashes}, query_state} ->
+        state = %{
+          state |
+          # add hashes to hashes_list
+          :hashes => hashes ++ state[:hashes],
+          qf => query_state
+        }
+        {:noreply, state}
+      %Ignore{state: query_state} ->
+        state = %{
+          state |
+          qf => query_state
+        }
+        {:noreply, state}
+    end
+  end
+
+  @spec handle_cast(tuple, map) :: tuple
+  def handle_cast({:end, {:bundle, qf}, buffer}, state) do
+    # first we fetch the query state from the state using the qf key.
+    query_state = Map.get(state, qf)
+    # now we decode the buffer using the query_state.
+    case Protocol.decode_end(buffer,query_state) do
+      # this indicates the transaction_hashes for bundle_hash
+      # state[qf][:bundle_hash] at current_index
+      # state[qf][:current_index] are ready.
+      {%Compute{result: hashes}, %{has_more_pages: false}} ->
+        bundle_case_has_more_pages_false(qf, hashes, state)
+      # this indicates the half_hashes are in half state.
+      # which mean there still more rows(transactions_hashes)
+      # have to be fetch with further queries requests.
+      {%Compute{result: half_hashes}, query_state} ->
+        bundle_case_has_more_pages_true(Helper, qf, half_hashes, query_state,state)
     end
   end
 
@@ -207,36 +327,6 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
   def handle_cast({:send?, _, status}, %{from: from} = state) do
     reply(from, status)
     {:stop, :normal, state}
-  end
-
-  @doc false
-  @spec bundle_case_has_more_pages_false(integer,integer,list,list,list,map) :: tuple
-  defp bundle_case_has_more_pages_false(qf,ref,hashes,hashes_list,hints_list,state) do
-    # hashes might be an empty list in rare situations(data consistency
-    # between edge_table and bundle_table or between replicas).
-    # we reduce ref as the cycle for qf completed.
-    ref = ref-1
-    # check if the last response.
-    case ref do
-      0 ->
-        # this indicates it's the last response
-        # (or might be the first and last)
-        # therefore we fulfil the API call.
-        # First we fetch the from reference for the caller processor.
-        from = state[:from] # from reference.
-        reply(from, {:ok, hashes ++ hashes_list, hints_list})
-        # now we stop the worker.
-        {:stop, :normal, state}
-      _ ->
-        # this indicates it's not the last response.
-        # (mean there are other queries under progress.)
-        # we preappend hashes with hashes_list.
-        hashes_list = hashes  ++ hashes_list
-        # create new updated state
-        state = %{Map.delete(state, qf) | ref: ref, hashes: hashes_list}
-        # return updated state.
-        {:noreply, state}
-    end
   end
 
 end
