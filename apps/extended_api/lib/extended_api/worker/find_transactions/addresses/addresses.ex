@@ -81,7 +81,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
   @doc """
     This function handles full response of a query from edge table.
   """
-  @spec handle_cast(tuple, tuple) :: tuple
+  @spec handle_cast(tuple, map) :: tuple
   def handle_cast({:full, {:edge, qf}, buffer}, state) do
     # first we fetch the query state from the state using the qf key.
     query_state = Map.get(state, qf)
@@ -131,7 +131,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
   @doc """
     This function handles full response of a query from bundle table.
   """
-  @spec handle_cast(tuple, tuple) :: tuple
+  @spec handle_cast(tuple, map) :: tuple
   def handle_cast({:full, {:bundle, qf}, buffer}, state) do
     # first we fetch the query state from the state using the qf key.
     query_state = Map.get(state, qf)
@@ -146,17 +146,17 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
       # which mean there still more rows(transactions_hashes)
       # have to be fetch with further queries requests.
       {%Compute{result: half_hashes}, query_state} ->
-        bundle_case_has_more_pages_true(qf, half_hashes, query_state,state)
+        bundle_case_has_more_pages_true(Helper, qf, half_hashes, query_state,state)
       # this is unprepared error handler.
       %Error{reason: :unprepared} ->
         # first we use hardcoded cql statement of bundle query.
         cql = @bundle_cql
         FastGlobal.delete(cql)
-        # fetch the address,opts from the current query_state, because it might be a
+        # fetch the bh,opts from the current query_state, because it might be a
         # response for paging request.
         %{opts: opts, bundle_hash: bh, current_index: ix, label: el, timestamp: ts}
           = query_state
-        # we pass the address,qf,opts as arguments to generate bundle query.
+        # we pass the bh,el,ts,ix,opts as arguments to generate bundle query.
         {ok?, _, _query_state} = Helper.bundle_query(bh, el, ts, ix, opts)
         # verfiy to proceed or break.
         ok?(ok?, state)
@@ -172,7 +172,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
   end
 
   # stream handler functions
-  @spec handle_cast(tuple, tuple) :: tuple
+  @spec handle_cast(tuple, map) :: tuple
   def handle_cast({call, {:edge, qf}, buffer}, %{ref: ref} = state) when call in [:start, :stream] do
     # first we fetch the query state from the state using the qf key.
     query_state = Map.get(state, qf)
@@ -205,7 +205,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
     end
   end
 
-  @spec handle_cast(tuple, tuple) :: tuple
+  @spec handle_cast(tuple, map) :: tuple
   def handle_cast({:end, {:edge, qf}, buffer}, state) do
     # first we fetch the query state from the state using the qf key.
     query_state = Map.get(state, qf)
@@ -231,7 +231,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
     end
   end
 
-  @spec handle_cast(tuple, tuple) :: tuple
+  @spec handle_cast(tuple, map) :: tuple
   def handle_cast({call, {:bundle, qf}, buffer}, state) when call in [:start, :stream] do
     # first we fetch the query state from the state using the qf key.
     query_state = Map.get(state, qf)
@@ -256,7 +256,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
     end
   end
 
-  @spec handle_cast(tuple, tuple) :: tuple
+  @spec handle_cast(tuple, map) :: tuple
   def handle_cast({:end, {:bundle, qf}, buffer}, state) do
     # first we fetch the query state from the state using the qf key.
     query_state = Map.get(state, qf)
@@ -271,7 +271,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
       # which mean there still more rows(transactions_hashes)
       # have to be fetch with further queries requests.
       {%Compute{result: half_hashes}, query_state} ->
-        bundle_case_has_more_pages_true(qf, half_hashes, query_state,state)
+        bundle_case_has_more_pages_true(Helper,qf, half_hashes, query_state,state)
     end
   end
 
@@ -291,62 +291,6 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
   def handle_cast({:send?, _, status}, {_, %{from: from}} = state) do
     reply(from, status)
     {:stop, :normal, state}
-  end
-
-  @doc false
-  @spec bundle_case_has_more_pages_false(integer,list, map) :: tuple
-  defp bundle_case_has_more_pages_false(qf, hashes, %{ref: ref, hashes: hashes_list} = state) do
-    # hashes might be an empty list in rare situations(data consistency
-    # between edge_table and bundle_table or between replicas).
-    # we reduce ref as the cycle for qf completed.
-    ref = ref-1
-    # check if the last response.
-    case ref do
-      0 ->
-        # this indicates it's the last response
-        # (or might be the first and last)
-        # therefore we fulfil the API call.
-        # First we fetch the from reference for the caller processor.
-        from = state[:from] # from reference.
-        reply(from, {:ok, hashes ++ hashes_list, state[:hints]})
-        # now we stop the worker.
-        {:stop, :normal, state}
-      _ ->
-        # this indicates it's not the last response.
-        # (mean there are other queries under progress.)
-        # no longer need query_state for qf in state.
-        state = %{ Map.delete(state, qf) |
-          # we preappend hashes with hashes_list.
-          hashes: hashes ++ hashes_list,
-          ref: ref
-        }
-        # return updated state.
-        {:noreply, state}
-    end
-  end
-
-  @doc false
-  @spec bundle_case_has_more_pages_true(integer, list, map, map) :: tuple
-  defp bundle_case_has_more_pages_true(
-      qf,
-      half_hashes,
-      %{opts: opts, bundle_hash: bh, current_index: ix, label: el, timestamp: ts, paging_state: p_state},
-      %{hashes: hashes_list} = state) do
-    # pattern matching on opts,bh,ix,el,ts from the query_state,
-    # as we needed(opts, bh, ix,el, ts) to issue new bundle_query.
-    # add paging_state to opts
-    opts = Map.put(opts, :paging_state, p_state)
-    # we pass bh,el,ts,ix,opts as arguments
-    # to generate bundle query with paging_state.
-    {ok?, _, query_state} = Helper.bundle_query(bh, el, ts, ix, opts)
-    # we preappend half_hashes with hashes_list.
-    # update state
-    state = %{state |
-      :hashes => half_hashes  ++ hashes_list,
-      qf => query_state
-      }
-    # verfiy to proceed or break.
-    ok?(ok?,  state)
   end
 
   @doc false

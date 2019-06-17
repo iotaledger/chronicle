@@ -56,7 +56,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses.EdgeFn do
     %{year: year, month: month} = DateTime.from_unix(el)
     # there is possibility for one hint only per address.
     hint = %{address: address, year: year, month: month}
-    %{acc | hint: hint}
+    %{acc | hint: [hint]}
   end
 
   @doc """
