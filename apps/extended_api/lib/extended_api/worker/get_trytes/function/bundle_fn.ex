@@ -21,7 +21,7 @@ defmodule ExtendedApi.Worker.GetTrytes.BundleFn do
   def construct(_bh,_el,_tx_lb,_ts,_ix,_lx,_ex,_ref, row, acc) when is_map(acc) do
     [{:lb, _},{:va, _},{:a, sx},{:c, nonce},
       {:d, tag},{:e, trunk},{:f, branch},
-      {:g, a_stamp},{:h, upper},{:i, lower}] = row
+      {:g, a_stamp},{:h, lower},{:i, upper}] = row
     _dynamic_fields(sx,tag,nonce,trunk,branch,a_stamp,lower,upper)
     |> merge?(acc)
   end
