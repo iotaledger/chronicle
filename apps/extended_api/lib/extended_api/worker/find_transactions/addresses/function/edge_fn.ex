@@ -53,7 +53,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses.EdgeFn do
     # label(lb) = hint = 60.
     # first we convert el(recent_timestamp) to year/month
     # create hint map
-    %{year: year, month: month} = DateTime.from_unix(el)
+    %{year: year, month: month} = DateTime.from_unix!(el)
     # there is possibility for one hint only per address.
     hint = %{address: address, year: year, month: month}
     %{acc | hint: [hint]}
