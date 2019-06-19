@@ -11,9 +11,9 @@ defmodule Core.DataModel.Keyspace.Tangle do
     that is recommended for one datacenter setup.
 
     currently we are working on a better structure .
-    
-  """
 
+  """
+  
   use OverDB.Builder.Keyspace,
     otp_apps: [:core]
 

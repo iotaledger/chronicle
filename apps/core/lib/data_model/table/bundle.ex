@@ -67,21 +67,21 @@ defmodule Core.DataModel.Table.Bundle do
     ]
 
   table :bundle do
-    column :bh, :varchar
+    column :bh, :blob
     column :lb, :tinyint
     column :ts, :varint
     column :ix, :varint
-    column :id, :varchar
-    column :va, :varchar
-    column :a, :varchar
-    column :b, :varchar
-    column :c, :varchar
-    column :d, :varchar
-    column :e, :varchar
-    column :f, :varchar
-    column :g, :varchar
-    column :h, :varchar
-    column :i, :varchar
+    column :id, :blob
+    column :va, :blob
+    column :a, :varint
+    column :b, :blob
+    column :c, :blob
+    column :d, :blob
+    column :e, :blob
+    column :f, :blob
+    column :g, :varint
+    column :h, :varint
+    column :i, :varint
     partition_key [:bh]
     cluster_columns [:lb, :ts, :ix, :id, :va]
     with_options [

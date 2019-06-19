@@ -40,17 +40,17 @@ defmodule Core.DataModel.Table.ZeroValue do
     ]
 
   table :zero_value do
-    column :v1, :varchar
+    column :v1, :blob
     column :yy, :smallint
     column :mm, :smallint
     column :lb, :tinyint
     column :ts, :varint
-    column :v2, :varchar
-    column :ex, :varchar
+    column :v2, :blob
+    column :ex, :blob
     column :ix, :varint
     column :el, :varint
     column :lx, :varint
-    column :sx, :varchar
+    column :sx, :varint
     partition_key [:v1, :yy, :mm]
     cluster_columns [:lb, :ts, :v2, :ex, :ix]
     with_options [

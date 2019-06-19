@@ -67,15 +67,15 @@ defmodule Core.DataModel.Table.Edge do
     ]
 
   table :edge do
-    column :v1, :varchar
+    column :v1, :blob
     column :lb, :tinyint
     column :ts, :varint
-    column :v2, :varchar
-    column :ex, :varchar
+    column :v2, :blob
+    column :ex, :blob
     column :ix, :varint
     column :el, :varint
     column :lx, :varint
-    column :sx, :varchar
+    column :sx, :varint
     partition_key [:v1]
     cluster_columns [:lb, :ts, :v2, :ex, :ix]
     with_options [
