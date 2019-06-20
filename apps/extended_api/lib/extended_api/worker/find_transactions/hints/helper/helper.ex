@@ -24,7 +24,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints.Helper do
   defguard is_month(month) when is_integer(month) and month > 0 and month <= 12
   defguard is_year(year) when is_integer(year)
   defguard is_page_size(p_size) when is_integer(p_size) and p_size <= @page_size
-  defguard is_paging_state(p_state) when is_binary(p_state)
+  defguard is_paging_state(p_state) when is_list(p_state)
 
   # Start of Helper functions for zero_value table queries ###########################
 
@@ -104,7 +104,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints.Helper do
     |> cql(@zero_value_cql)
     |> values([{:varchar, address},{:smallint, yy},{:smallint, mm}])
     |> opts(opts || %{function: {ZeroValueFn, :bundle_queries},
-        page_size: p_size, paging_state: hint[:paging_state]})
+        page_size: p_size, paging_state: hint["paging_state"]})
     |> pk([v1: address, yy: yy, mm: mm]) |> prepare?(true) |> reference({:zero_value, ref})
     |> Hints.query()
   end
@@ -137,9 +137,9 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints.Helper do
 
   @spec create_hint(map, nil | binary) :: map
   def create_hint(hint, paging_state \\ nil)
-  def create_hint(%{"month" => 1, "year" => yy, "address" => address, "page_size" => p_size} = hint, paging_state) do
+  def create_hint(%{"month" => 1, "year" => yy, "address" => address, "page_size" => p_size} = _hint, paging_state) do
     if paging_state do
-      %{@full_hint | address: address, year: yy, paging_state: paging_state, page_size: p_size }
+      %{@full_hint | address: address, year: yy, paging_state: :binary.bin_to_list(paging_state), page_size: p_size }
     else
       %{@rest_hint | address: address, year: yy-1, page_size: p_size}
     end
@@ -147,7 +147,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints.Helper do
   @spec create_hint(map, nil | binary) :: map
   def create_hint(%{"month" => mm, "year" => yy, "address" => address, "page_size" => p_size}, paging_state) do
     if paging_state do
-      %{@full_hint | address: address, month: mm, year: yy, paging_state: paging_state, page_size: p_size }
+      %{@full_hint | address: address, month: mm, year: yy, paging_state: :binary.bin_to_list(paging_state), page_size: p_size }
     else
       %{@rest_hint | address: address, month: mm-1, year: yy, page_size: p_size}
     end
