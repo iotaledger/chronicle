@@ -26,8 +26,7 @@ defmodule ExtendedApiWeb.CommandController do
           {:error, :invalid_type} ->
             # render json invaildType error.
             render_error(conn, "invalidType.json")
-          {:error, er} ->
-            IO.inspect(er)
+          {:error, _} ->
             # something wrong happen (:dead_shard_stage,
             # scylla read_timeout error)
             render_error(conn, "something.json")
