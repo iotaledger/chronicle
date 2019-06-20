@@ -5,7 +5,7 @@ defmodule ExtendedApi.Worker.GetTrytes do
     executor: Core.Executor
 
   alias ExtendedApi.Worker.GetTrytes.Helper
-  import ExtendedApi.Worker.Helper
+  import ExtendedApi.Worker.Helper, only: [ok?: 2, reply: 2]
 
   @edge_cql "SELECT lb,ts,v2,ex,ix,el,lx FROM tangle.edge WHERE v1 = ? AND lb IN ?"
   @bundle_cql "SELECT lb,va,a,c,d,e,f,g,h,i FROM tangle.bundle WHERE bh = ? AND lb IN ? AND ts = ? AND ix = ? AND id IN ?"
@@ -249,7 +249,7 @@ defmodule ExtendedApi.Worker.GetTrytes do
       # this is unprepared error handler
       %Error{reason: :unprepared} ->
         # first we use hardcoded cql statement of bundle query.
-        cql = @edge_cql
+        cql = @bundle_cql
         FastGlobal.delete(cql)
         # fetch the opts from the current query_state, because it might be a
         # response for paging request.
