@@ -49,13 +49,13 @@ defmodule ExtendedApi.Worker.GetTrytes.Helper do
     {:error, ok?}
   end
 
-  @spec edge_query(binary, integer) :: tuple
-  def edge_query(hash, ref) do
+  @spec edge_query(binary, integer, map) :: tuple
+  def edge_query(hash, ref, opts \\ nil) do
     {Tangle, Edge}
     |> select([:lb,:ts,:v2,:ex,:ix,:el,:lx]) |> type(:stream) |> assign(hash: hash)
     |> cql(@edge_cql)
     |> values([{:varchar, hash}, {{:list, :tinyint}, [30,40]}])
-    |> opts(%{function: {EdgeFn, :bundle_queries, [ref]}})
+    |> opts(opts || %{function: {EdgeFn, :bundle_queries, [ref]}})
     |> pk([v1: hash]) |> prepare?(true) |> reference({:edge, ref})
     |> GetTrytes.query()
   end
@@ -65,11 +65,12 @@ defmodule ExtendedApi.Worker.GetTrytes.Helper do
   @doc """
     This function generates and execute bundle query.
   """
-  def bundle_query(bh,addr_lb,tx_lb,ts,ix,lx,ex,ref, opts \\ nil) do
+  def bundle_query(bh,addr_lb,tx_lb,ts,ix,lx,ex,ref, opts \\ nil, acc \\ %{}) do
     {Tangle, Bundle}
     |> select([:lb, :va, :a, :c, :d, :e, :f, :g, :h, :i]) |> type(:stream)
      # NOTE: we had to use this statement till ScyllaDB's bug get resolved (https://github.com/scylladb/scylla/issues/4509)
     |> cql(@bundle_cql) # check at the top of module to know the current cql statement.
+    |> assign(acc: acc)
     |> values([{:varchar, bh}, {{:list, :tinyint}, [addr_lb, tx_lb]}, {:varint, ts}, {:varint, ix}, {{:list, :varchar}, ["addr", ex]}])
     |> pk([bh: bh]) |> prepare?(true) |> reference({:bundle, ref})
     |> opts(opts || %{function: {BundleFn, :construct, [bh,addr_lb,tx_lb,ts,ix,lx,ex,ref]}})
@@ -81,9 +82,9 @@ defmodule ExtendedApi.Worker.GetTrytes.Helper do
     It's intended to make sure to add the paging_state(if any)
     and append the arguments ( bh, addr_lb,tx_lb, etc)
   """
-  @spec bundle_query_from_opts(map) :: tuple
-  def bundle_query_from_opts(%{function: {_, _, args}} = opts) do
-    apply(Helper, :bundle_query, args ++ [opts])
+  @spec bundle_query_from_opts_acc(map,map) :: tuple
+  def bundle_query_from_opts_acc(%{function: {_, _, args}} = opts, acc) do
+    apply(Helper, :bundle_query, args ++ [opts,acc])
   end
 
 end
