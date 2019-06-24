@@ -106,9 +106,10 @@ defmodule ExtendedApi.Worker.GetTrytes do
             {:stop, :normal, state}
         end
       # empty result because the transaction in trytes_list at index(qf)
-      # doesn't have a row in ScyllaDB Edge table.
-      # thus no further actions should be taken for that transaction.
-      {%Compute{result: []}, _} ->
+      # doesn't have a row in ScyllaDB Edge table only if has_more_pages:
+      # false, thus no further actions should be taken for that transaction.
+      # unless has_more_pages: true.
+      {%Compute{result: []}, %{has_more_pages: false}} ->
         # we reduce the ref.
         # NOTE: we reduce the ref only when the cycle for hash
         # is complete, thus empty list means no further
@@ -134,6 +135,17 @@ defmodule ExtendedApi.Worker.GetTrytes do
             # we return updated state.
             {:noreply, state}
         end
+      # empty result because of Scylla,thus further query
+      # is required as has_more_pages: true.
+      {%Compute{result: []}, %{hash: hash, opts: opts, has_more_pages: true, paging_state: p_state}} ->
+        # put paging_state in opts
+        opts = Map.put(opts, :paging_state, p_state)
+        # re-send edge_query with updated opts.
+        {ok?, _,query_state} = Helper.edge_query(hash, qf, opts)
+        # we update the query_state in worker state.
+        state = %{state | qf => query_state}
+        # verfiy to proceed or break.
+        ok?(ok?, state)
       # this is unprepared error handler
       %Error{reason: :unprepared} ->
         # first we use hardcoded cql statement of edge query.
@@ -142,12 +154,14 @@ defmodule ExtendedApi.Worker.GetTrytes do
         # this mean any future edge queries should be
         # re-prepare the %Prepared{} struct.
         FastGlobal.delete(cql)
-        # now we fetch the assigned hash from the query_state
-        %{hash: hash} = query_state
+        # now we fetch the assigned hash/opts from the query_state
+        # we are fetching the opts because it might be a response
+        # belongs to a paging_request.
+        %{hash: hash, opts: opts} = query_state
         # We resend the query..
         # we don't care about new generated query state neither
         # qf(query_reference) because they match the current ones.
-        {ok?, _,_} = Helper.edge_query(hash, qf)
+        {ok?, _,_} = Helper.edge_query(hash, qf, opts)
         # verfiy to proceed or break.
         ok?(ok?, state)
       %Error{reason: reason} ->
@@ -232,16 +246,13 @@ defmodule ExtendedApi.Worker.GetTrytes do
         end
       # this indicates the tx-object is a half_map for transaction at index(qf)
       # # NOTE: half_map only hold the address's row computing result.
-      {%Compute{result: half_map}, %{has_more_pages: true, paging_state: p_state}} ->
-        # create new bundle query to fetch the remaining row(transaction's row)
-        # we fetch the opts.
-        %{opts: opts} = query_state
+      {%Compute{result: half_map}, %{opts: opts, has_more_pages: true, paging_state: p_state}} ->
+        # NOTE: half_map might be an empty map (%{}) or the address's row map.
+        # create new bundle query to fetch the remaining row(transaction's row or even both rows.)
         # we add paging state to the opts.
         opts = Map.put(opts, :paging_state, p_state)
-        # we pass the opts as an argument to generate bundle query with paging_state.
-        {ok?, _, query_state} = Helper.bundle_query_from_opts(opts)
-        # we assign half_map as acc to query_state
-        query_state = Map.put(query_state, :acc, half_map)
+        # we pass the opts and half_map(acc) as arguments to generate bundle query with paging_state.
+        {ok?, _, query_state} = Helper.bundle_query_from_opts_acc(opts, half_map)
         # we update query_state in state
         state = %{state | qf => query_state}
         # verfiy to proceed or break.
@@ -253,9 +264,9 @@ defmodule ExtendedApi.Worker.GetTrytes do
         FastGlobal.delete(cql)
         # fetch the opts from the current query_state, because it might be a
         # response for paging request.
-        %{opts: opts} = query_state
+        %{opts: opts, acc: acc} = query_state
         # we pass the opts as an argument to generate bundle query.
-        {ok?, _, _} = Helper.bundle_query_from_opts(opts)
+        {ok?, _, _} = Helper.bundle_query_from_opts_acc(opts,acc)
         # verfiy to proceed or break.
         ok?(ok?, state)
       %Error{reason: reason} ->
@@ -297,7 +308,7 @@ defmodule ExtendedApi.Worker.GetTrytes do
             reply(from, error)
             {:stop, :normal, state}
         end
-      {%Compute{result: []}, _} ->
+      {%Compute{result: []}, %{has_more_page: false}} ->
         # we reduce the ref.
         ref = state[:ref]-1
         # we check if this response is the last response.
@@ -320,6 +331,17 @@ defmodule ExtendedApi.Worker.GetTrytes do
             # return updated state.
             {:noreply, state}
         end
+      # empty result because of Scylla,thus further query
+      # is required as has_more_pages: true.
+      {%Compute{result: []}, %{hash: hash, opts: opts, has_more_pages: true, paging_state: p_state}} ->
+        # put paging_state in opts
+        opts = Map.put(opts, :paging_state, p_state)
+        # re-send edge_query with updated opts.
+        {ok?, _,query_state} = Helper.edge_query(hash, qf, opts)
+        # we update the query_state in worker state.
+        state = %{state | qf => query_state}
+        # verfiy to proceed or break.
+        ok?(ok?, state)
     end
   end
 
@@ -364,16 +386,13 @@ defmodule ExtendedApi.Worker.GetTrytes do
             state = %{Map.delete(state, qf) | ref: ref, trytes: trytes_list}
             {:noreply, state}
         end
-      {%Compute{result: half_map}, %{has_more_pages: true, paging_state: p_state}} ->
-        # create new bundle query to fetch the remaining row(transaction's row)
-        # we fetch the opts.
-        %{opts: opts} = query_state
+      {%Compute{result: half_map}, %{opts: opts, has_more_pages: true, paging_state: p_state}} ->
+        # NOTE: half_map might be an empty map (%{}) or the address's row map.
+        # create new bundle query to fetch the remaining row(transaction's row or even both rows.)
         # we add paging state to the opts.
         opts = Map.put(opts, :paging_state, p_state)
-        # we pass the opts as an argument to generate bundle query with paging_state.
-        {ok?, _, query_state} = Helper.bundle_query_from_opts(opts)
-        # we assign half_map as acc to query_state
-        query_state = Map.put(query_state, :acc, half_map)
+        # we pass the opts and half_map(acc) as arguments to generate bundle query with paging_state.
+        {ok?, _, query_state} = Helper.bundle_query_from_opts_acc(opts, half_map)
         # we update query_state in state
         state = %{state | qf => query_state}
         # verfiy to proceed or break.
