@@ -7,9 +7,13 @@ defmodule Core.DataModel.Table.Tag do
     https://docs.scylladb.com/getting-started/types/
 
     :tag is the table name,
-    :tg is a tag alias, and also the partition key,
-    :ts is a timestamp alias, and also the first clustering key.
-    :th is an txhash alias, also the second clustering key,
+    :p0, is pair0 alias first 2 chars of tag, in IAC they represent 2200km
+    :p1, is pair1 alias, second 2 chars from tag, in IAC they represent 110km
+    :p2, is pair2 alias, third 2 chars from tag, in IAC they represent 5.5 km
+    :p3, is pair3 alias, 4th 2 chars from tag, in IAC they represent 275m
+    :rt is remaining tag alias, remaining 19 chars from tag.
+    :ts is a timestamp alias, and also the 6th clustering key.
+    :th is txhash alias, also the last clustering key,
 
   """
 
@@ -21,13 +25,20 @@ defmodule Core.DataModel.Table.Tag do
     ]
 
   table :tag do
-    column :tg, :blob
+    column :p0, :varchar
+    column :p1, :varchar
+    column :p2, :varchar
+    column :p3, :varchar
+    column :rt, :varchar
     column :ts, :varint
     column :th, :blob
-    partition_key [:tg]
-    cluster_columns [:ts, :th]
+    partition_key [:p0, :p1]
+    cluster_columns [:p2, :p3, :rt, :ts, :th]
     with_options [
     clustering_order_by: [
+      p2: :asc,
+      p3: :asc,
+      rt: :asc,
       ts: :desc
     ],
     default_time_to_live: @default_ttl
