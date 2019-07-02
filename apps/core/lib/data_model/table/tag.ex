@@ -7,8 +7,10 @@ defmodule Core.DataModel.Table.Tag do
     https://docs.scylladb.com/getting-started/types/
 
     :tag is the table name,
-    :p0, is pair0 alias first 2 chars of tag, in IAC they represent 2200km
-    :p1, is pair1 alias, second 2 chars from tag, in IAC they represent 110km
+    :p0, is pair0 alias first 2 chars of tag, in IAC they represent 2200km # first component in pk,
+    :p1, is pair1 alias, second 2 chars from tag, in IAC they represent 110km # second component in pk
+    :yy, is year alias, third component partition key
+    :mm, is month alias, 4th component partition key
     :p2, is pair2 alias, third 2 chars from tag, in IAC they represent 5.5 km
     :p3, is pair3 alias, 4th 2 chars from tag, in IAC they represent 275m
     :rt is remaining tag alias, remaining 19 chars from tag.
@@ -17,7 +19,7 @@ defmodule Core.DataModel.Table.Tag do
 
   """
 
-  @default_ttl Application.get_env(:over_db, :core)[:__TAG_TTL__] || 1000 # seconds
+  @default_ttl Application.get_env(:over_db, :core)[:__TAG_TTL__] || 0 # seconds, 0 = forever.
 
   use OverDB.Builder.Table,
     keyspaces: [
@@ -27,12 +29,14 @@ defmodule Core.DataModel.Table.Tag do
   table :tag do
     column :p0, :varchar
     column :p1, :varchar
+    column :yy, :smallint
+    column :mm, :smallint
     column :p2, :varchar
     column :p3, :varchar
     column :rt, :varchar
     column :ts, :varint
     column :th, :blob
-    partition_key [:p0, :p1]
+    partition_key [:p0, :p1, :yy, :mm]
     cluster_columns [:p2, :p3, :rt, :ts, :th]
     with_options [
     clustering_order_by: [
