@@ -43,8 +43,9 @@ defmodule Core.DataModel.Table.Edge do
       20 => :input,
       30 => :txhash,
       40 => :headHash,
-      50 => :approve
-
+      50 => :approve,
+      60 => :hint # is address hint,
+      70 => :hint # is tag hint
     }
 
     :lx is a last_index alias, and non-clustering-column,
