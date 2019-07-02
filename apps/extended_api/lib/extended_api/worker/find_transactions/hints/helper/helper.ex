@@ -37,7 +37,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints.Helper do
       {:error, term} : error occurs either because of invalid
         hint structure/type or dead shard stage in the query engine.
   """
-  @spec queries(list,map, list, integer) :: {:ok, integer, map} | {:error, term}
+  @spec queries(list,map, list, integer) :: {:ok, map} | {:error, term}
   def queries(hints, state, queries_states_list \\ [], ref \\ 0)
   def queries(hints, state, queries_states_list, ref) do
     _queries(hints, state, queries_states_list, ref)
@@ -92,7 +92,6 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints.Helper do
   defp _queries(ok?,_,_, _, _, _) do
     {:error, ok?}
   end
-
 
   @spec zero_value_query(map, integer, nil | map) :: tuple
   def zero_value_query(

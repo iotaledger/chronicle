@@ -1,7 +1,5 @@
 defmodule ExtendedApi.Worker.FindTransactions.Addresses do
 
-  # NOTE:  require heavey testing.
-
   use GenServer
   use OverDB.Worker,
     executor: Core.Executor
@@ -288,7 +286,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
     we are droping the API call in case off any
     unsuccessful send request.
   """
-  def handle_cast({:send?, _, status}, {_, %{from: from}} = state) do
+  def handle_cast({:send?, _, status}, %{from: from} = state) do
     reply(from, status)
     {:stop, :normal, state}
   end
