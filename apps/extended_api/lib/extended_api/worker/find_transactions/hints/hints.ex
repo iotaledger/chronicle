@@ -469,17 +469,16 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
   @spec cql?(binary) :: binary
   defp cql?(tag) do
     tag_size = byte_size(tag)
-    cql =
-      cond do
-        tag_size == 27 ->
-          @tag_27_cql
-        tag_size >= 8 and tag_size < 10 ->
-          @tag_8_cql
-        tag_size >= 6 and tag_size < 8 ->
-          @tag_6_cql
-        true ->
-          @tag_4_cql
-      end
+    cond do
+      tag_size == 27 ->
+        @tag_27_cql
+      tag_size >= 8 and tag_size < 10 ->
+        @tag_8_cql
+      tag_size >= 6 and tag_size < 8 ->
+        @tag_6_cql
+      true ->
+        @tag_4_cql
+    end
   end
 
 end

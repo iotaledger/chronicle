@@ -137,7 +137,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints.Helper do
 
   @spec tag_query(map, integer, nil | map) :: tuple
   def tag_query(
-    %{"tag" => tag,"year" => yy, "month" => mm, "page_size" => p_size} = hint,
+    %{"tag" => <<p0::2-bytes, p1::2-bytes, _::binary>> = tag,"year" => yy, "month" => mm, "page_size" => p_size} = hint,
      ref, opts \\ nil) do
     query =
       {Tangle, Tag}
