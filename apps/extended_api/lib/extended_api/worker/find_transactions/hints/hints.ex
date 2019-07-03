@@ -1,6 +1,6 @@
 defmodule ExtendedApi.Worker.FindTransactions.Hints do
 
-
+  # TODO: testing tag hint
   use GenServer
   use OverDB.Worker,
     executor: Core.Executor
@@ -10,7 +10,10 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
 
   @zero_value_cql "SELECT ts,v2,ix,el FROM tangle.zero_value WHERE v1 = ? AND yy = ? AND mm = ? AND lb = 10"
   @bundle_cql "SELECT b FROM tangle.bundle WHERE bh = ? AND lb = ? AND ts = ? AND ix = ?"
-
+  @tag_27_cql "SELECT th FROM tangle.tag WHERE p0 = ? AND p1 = ? AND yy = ? AND mm = ? AND p2 = ? AND p3 = ? AND rt = ?"
+  @tag_8_cql "SELECT th FROM tangle.tag WHERE p0 = ? AND p1 = ? AND yy = ? AND mm = ? AND p2 = ? AND p3 = ?"
+  @tag_6_cql "SELECT th FROM tangle.tag WHERE p0 = ? AND p1 = ? AND yy = ? AND mm = ? AND p2 = ?"
+  @tag_4_cql "SELECT th FROM tangle.tag WHERE p0 = ? AND p1 = ? AND yy = ? AND mm = ?"
   @doc """
     This function starts FindTransactions.Hints worker.
   """
@@ -94,7 +97,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
       # otherwise we keep same month/year and put paging_state.
       {%Compute{result: queries_states}, %{hint: hint} = query_state} when is_list(queries_states) ->
         # create/update hint
-        hint = Helper.create_hint(hint, query_state[:paging_state])
+        hint = Helper.address_hint(hint, query_state[:paging_state])
         # we delete the query_state for qf as it's no longer needed.
         state = Map.delete(state, qf)
         # update ref to include the queries_states count-1.
@@ -191,7 +194,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
       # for hint state[qf][:hint] are ready.
       {%Compute{result: queries_states}, %{hint: hint} = query_state} when is_list(queries_states) ->
         # create/update hint
-        hint = Helper.create_hint(hint, query_state[:paging_state])
+        hint = Helper.address_hint(hint, query_state[:paging_state])
         # we delete the query_state for qf as it's no longer needed.
         state = Map.delete(state, qf)
         # update ref to include the queries_states count-1.
@@ -311,6 +314,140 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
     end
   end
 
+  # tag handler functions start ###
+
+  @doc """
+    This function handles full response of a query from tag table.
+  """
+  @spec handle_cast(tuple, map) :: tuple
+  def handle_cast({:full, {:tag, qf}, buffer}, %{ref: ref, hashes: hashes_list, hints: hints_list} = state) do
+    # first we fetch the query state from the state using the qf key.
+    query_state = Map.get(state, qf)
+    # now we decode the buffer using the query_state.
+    case Protocol.decode_full(buffer,query_state) do
+      # this indicates the transaction_hashes for tag hint
+      # state[qf][:hint] are ready.
+      {%Compute{result: hashes}, %{hint: hint} = query_state} ->
+        # hashes might be an empty list.
+        # create/update hint
+        hint = Helper.tag_hint(hint, query_state[:paging_state])
+        # we reduce ref as the cycle for qf completed.
+        ref = ref-1
+        # check if the last response.
+        case ref do
+          0 ->
+            # this indicates it's the last response
+            # (or might be the first and last)
+            # therefore we fulfil the API call.
+            # First we fetch the from reference for the caller processor.
+            from = state[:from] # from reference.
+            reply(from, {:ok, hashes ++ hashes_list, [hint | hints_list]})
+            # now we stop the worker.
+            {:stop, :normal, state}
+          _ ->
+            # this indicates it's not the last response.
+            # (mean there are other queries under progress.)
+            # no longer need query_state for qf in state.
+            state = %{ Map.delete(state, qf) |
+              # we preappend hashes with hashes_list.
+              hashes: hashes ++ hashes_list,
+              hints: [hint | hints_list],
+              ref: ref
+            }
+            # return updated state.
+            {:noreply, state}
+        end
+      # this is unprepared error handler.
+      %Error{reason: :unprepared} ->
+        # first we use hardcoded cql statement of tag query.
+        %{hint: %{"tag" => tag}} = query_state
+        FastGlobal.delete(cql?(tag))
+        # fetch the bh,opts from the current query_state, because it might be a
+        # response for paging request.
+        %{opts: opts, hint: hint} = query_state
+        # we pass hint,ref,opts as arguments to generate bundle query.
+        {ok?, _, _query_state} = Helper.tag_query(hint, ref, opts)
+        # verfiy to proceed or break.
+        ok?(ok?, state)
+      # remaining error handler. ( error, eg read_timeout, etc)
+      %Error{reason: reason} ->
+        # we break.
+        from = state[:from] # this the caller reference.
+        # respond
+        reply(from, {:error, reason})
+        # stop worker
+        {:stop, :normal, state}
+    end
+  end
+
+  @spec handle_cast(tuple, map) :: tuple
+  def handle_cast({call, {:tag, qf}, buffer}, state) when call in [:start, :stream] do
+    # first we fetch the query state from the state using the qf key.
+    query_state = Map.get(state, qf)
+    # now we decode the buffer using the query_state.
+    case Protocol.decode_all(call,buffer,query_state) do
+      # this indicates some hashes for tag state[qf][:hint]
+      # are might be ready
+      {%Compute{result: hashes}, query_state} ->
+        state = %{
+          state |
+          # add hashes to hashes_list
+          :hashes => hashes ++ state[:hashes],
+          qf => query_state
+        }
+        {:noreply, state}
+      %Ignore{state: query_state} ->
+        state = %{
+          state |
+          qf => query_state
+        }
+        {:noreply, state}
+    end
+  end
+
+  @spec handle_cast(tuple, map) :: tuple
+  def handle_cast({:end, {:tag, qf}, buffer}, %{ref: ref, hashes: hashes_list, hints: hints_list} = state) do
+    # first we fetch the query state from the state using the qf key.
+    query_state = Map.get(state, qf)
+    # now we decode the buffer using the query_state.
+    case Protocol.decode_full(buffer,query_state) do
+      # this indicates the transaction_hashes for tag hint
+      # state[qf][:hint] are ready.
+      {%Compute{result: hashes}, %{hint: hint} = query_state} ->
+        # hashes might be an empty list.
+        # create/update hint
+        hint = Helper.tag_hint(hint, query_state[:paging_state])
+        # we reduce ref as the cycle for qf completed.
+        ref = ref-1
+        # check if the last response.
+        case ref do
+          0 ->
+            # this indicates it's the last response
+            # (or might be the first and last)
+            # therefore we fulfil the API call.
+            # First we fetch the from reference for the caller processor.
+            from = state[:from] # from reference.
+            reply(from, {:ok, hashes ++ hashes_list, [hint | hints_list]})
+            # now we stop the worker.
+            {:stop, :normal, state}
+          _ ->
+            # this indicates it's not the last response.
+            # (mean there are other queries under progress.)
+            # no longer need query_state for qf in state.
+            state = %{ Map.delete(state, qf) |
+              # we preappend hashes with hashes_list.
+              hashes: hashes ++ hashes_list,
+              hints: [hint | hints_list],
+              ref: ref
+            }
+            # return updated state.
+            {:noreply, state}
+        end
+    end
+  end
+
+  # tag handler functions end
+
   @doc """
     Handler function which validate if query request
     has ended in the shard's socket tcp_window.
@@ -327,6 +464,22 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
   def handle_cast({:send?, _, status}, %{from: from} = state) do
     reply(from, status)
     {:stop, :normal, state}
+  end
+
+  @spec cql?(binary) :: binary
+  defp cql?(tag) do
+    tag_size = byte_size(tag)
+    cql =
+      cond do
+        tag_size == 27 ->
+          @tag_27_cql
+        tag_size >= 8 and tag_size < 10 ->
+          @tag_8_cql
+        tag_size >= 6 and tag_size < 8 ->
+          @tag_6_cql
+        true ->
+          @tag_4_cql
+      end
   end
 
 end
