@@ -219,7 +219,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints.Helper do
   end
 
   # creating tag hint functions
-  @spec address_hint(map, nil | binary) :: map
+  @spec tag_hint(map, nil | binary) :: map
   def tag_hint(hint, paging_state \\ nil)
   def tag_hint(%{"month" => 1, "year" => yy, "tag" => tag, "page_size" => p_size} = _hint, paging_state) do
     if paging_state do
