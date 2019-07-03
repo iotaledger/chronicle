@@ -139,51 +139,38 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints.Helper do
   def tag_query(
     %{"tag" => tag,"year" => yy, "month" => mm, "page_size" => p_size} = hint,
      ref, opts \\ nil) do
+    query =
+      {Tangle, Tag}
+      |> select([:th]) |> type(:stream)
+      |> assign(hint: hint)
+      |> opts(opts || %{function: {TagFn, :construct},
+          page_size: p_size, paging_state: hint["paging_state"]})
+      |> pk([p0: p0, p1: p1, yy: yy, mm: mm]) |> prepare?(true) |> reference({:tag, ref})
     # we pattern matching the tag into pairs.
     case tag do
       # this create full tag query.
       <<p0::2-bytes, p1::2-bytes, p2::2-bytes,p3::2-bytes,rt::19-bytes>> ->
-        {Tangle, Tag}
-        |> select([:th]) |> type(:stream)
-        |> assign(hint: hint)
+        query
         |> cql(@tag_27_cql) #
         |> values([{:blob, p0},{:blob, p1},{:smallint, yy},{:smallint, mm},{:blob, p2},{:blob, p3},{:blob, rt}])
-        |> opts(opts || %{function: {TagFn, :construct},
-            page_size: p_size, paging_state: hint["paging_state"]})
-        |> pk([p0: p0, p1: p1, yy: yy, mm: mm]) |> prepare?(true) |> reference({:tag, ref})
         |> Hints.query()
       # this create 8-chars query in IAC is 275m area.
       <<p0::2-bytes, p1::2-bytes, p2::2-bytes,p3::2-bytes,_::binary>> ->
-        {Tangle, Tag}
-        |> select([:th]) |> type(:stream)
-        |> assign(hint: hint)
+        query
         |> cql(@tag_8_cql) #
         |> values([{:blob, p0},{:blob, p1},{:smallint, yy},{:smallint, mm},{:blob, p2},{:blob, p3}])
-        |> opts(opts || %{function: {TagFn, :construct},
-            page_size: p_size, paging_state: hint["paging_state"]})
-        |> pk([p0: p0, p1: p1, yy: yy, mm: mm]) |> prepare?(true) |> reference({:tag, ref})
         |> Hints.query()
       # this create 6-chars query in IAC is 5.5km area.
       <<p0::2-bytes, p1::2-bytes, p2::2-bytes,_::binary>> ->
-        {Tangle, Tag}
-        |> select([:th]) |> type(:stream)
-        |> assign(hint: hint)
+        query
         |> cql(@tag_6_cql) #
         |> values([{:blob, p0},{:blob, p1},{:smallint, yy},{:smallint, mm},{:blob, p2}])
-        |> opts(opts || %{function: {TagFn, :construct},
-            page_size: p_size, paging_state: hint["paging_state"]})
-        |> pk([p0: p0, p1: p1, yy: yy, mm: mm]) |> prepare?(true) |> reference({:tag, ref})
         |> Hints.query()
       # this create 4-chars query in IAC is 110km area.
       <<p0::2-bytes, p1::2-bytes,_::binary>> ->
-        {Tangle, Tag}
-        |> select([:th]) |> type(:stream)
-        |> assign(hint: hint)
+        query
         |> cql(@tag_4_cql) #
         |> values([{:blob, p0},{:blob, p1},{:smallint, yy},{:smallint, mm}])
-        |> opts(opts || %{function: {TagFn, :construct},
-            page_size: p_size, paging_state: hint["paging_state"]})
-        |> pk([p0: p0, p1: p1, yy: yy, mm: mm]) |> prepare?(true) |> reference({:tag, ref})
         |> Hints.query()
     end
   end
