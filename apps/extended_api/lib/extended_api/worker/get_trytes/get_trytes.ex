@@ -7,7 +7,7 @@ defmodule ExtendedApi.Worker.GetTrytes do
   alias ExtendedApi.Worker.GetTrytes.Helper
   import ExtendedApi.Worker.Helper, only: [ok?: 2, reply: 2]
 
-  @edge_cql "SELECT lb,ts,v2,ex,ix,el,lx FROM tangle.edge WHERE v1 = ? AND lb IN ?"
+  @edge_cql "SELECT lb,ts,v2,ex,ix,el,lx FROM tangle.edge WHERE v1 = ? AND lb = 30"
   @bundle_cql "SELECT lb,va,a,c,d,e,f,g,h,i FROM tangle.bundle WHERE bh = ? AND lb IN ? AND ts = ? AND ix = ? AND id IN ?"
   @doc """
     This function handing starting GetTrytes worker.

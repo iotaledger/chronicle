@@ -9,7 +9,7 @@ defmodule ExtendedApi.Worker.GetTrytes.Helper do
   alias Core.DataModel.{Keyspace.Tangle, Table.Bundle, Table.Edge}
   import OverDB.Builder.Query
 
-  @edge_cql "SELECT lb,ts,v2,ex,ix,el,lx FROM tangle.edge WHERE v1 = ? AND lb IN ?"
+  @edge_cql "SELECT lb,ts,v2,ex,ix,el,lx FROM tangle.edge WHERE v1 = ? AND lb = 30"
   @bundle_cql "SELECT lb,va,a,c,d,e,f,g,h,i FROM tangle.bundle WHERE bh = ? AND lb IN ? AND ts = ? AND ix = ? AND id IN ?"
   # Start of Helper functions for Edge table queries ###########################
 
@@ -34,7 +34,7 @@ defmodule ExtendedApi.Worker.GetTrytes.Helper do
 
   @spec _queries(list, map, list,list, integer) :: tuple
   defp _queries(_, _, _, _,_) do
-    {:error, :invalid_type}
+    {:error, :invalid}
   end
 
   @spec _queries(atom, list, map, list,list, integer, map) :: tuple
@@ -54,7 +54,7 @@ defmodule ExtendedApi.Worker.GetTrytes.Helper do
     {Tangle, Edge}
     |> select([:lb,:ts,:v2,:ex,:ix,:el,:lx]) |> type(:stream) |> assign(hash: hash)
     |> cql(@edge_cql)
-    |> values([{:varchar, hash}, {{:list, :tinyint}, [30,40]}])
+    |> values([{:blob, hash}])
     |> opts(opts || %{function: {EdgeFn, :bundle_queries, [ref]}})
     |> pk([v1: hash]) |> prepare?(true) |> reference({:edge, ref})
     |> GetTrytes.query()
@@ -71,7 +71,7 @@ defmodule ExtendedApi.Worker.GetTrytes.Helper do
      # NOTE: we had to use this statement till ScyllaDB's bug get resolved (https://github.com/scylladb/scylla/issues/4509)
     |> cql(@bundle_cql) # check at the top of module to know the current cql statement.
     |> assign(acc: acc)
-    |> values([{:varchar, bh}, {{:list, :tinyint}, [addr_lb, tx_lb]}, {:varint, ts}, {:varint, ix}, {{:list, :varchar}, ["addr", ex]}])
+    |> values([{:blob, bh}, {{:list, :tinyint}, [addr_lb, tx_lb]}, {:varint, ts}, {:varint, ix}, {{:list, :blob}, ["addr", ex]}])
     |> pk([bh: bh]) |> prepare?(true) |> reference({:bundle, ref})
     |> opts(opts || %{function: {BundleFn, :construct, [bh,addr_lb,tx_lb,ts,ix,lx,ex,ref]}})
     |> GetTrytes.query()

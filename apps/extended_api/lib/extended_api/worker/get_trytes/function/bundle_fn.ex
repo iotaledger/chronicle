@@ -1,7 +1,5 @@
 defmodule ExtendedApi.Worker.GetTrytes.BundleFn do
 
- # TODO: add specs
-
   @doc """
     This function handle address's row and creates map
     with the fixed_fields( which doesn't change after new
@@ -60,10 +58,6 @@ defmodule ExtendedApi.Worker.GetTrytes.BundleFn do
   # this merge the two rows(address's row, transaction's row)
   defp merge?(map,acc) when is_map(acc) do
     Map.merge(map, acc)
-  end
-
-  defp merge?(_,acc) do
-    raise "merge? is not map bundleFn #{inspect acc}"
   end
 
 end

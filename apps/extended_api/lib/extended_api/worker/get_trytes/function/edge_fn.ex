@@ -23,7 +23,7 @@ defmodule ExtendedApi.Worker.GetTrytes.EdgeFn do
     ref,
     [lb: lb, ts: ts, v2: bh, ex: ex, ix: ix, el: el, lx: lx],
     _) do
-    # lb indicates label (tx_hash, or h_hash)
+    # lb indicates label (tx_hash)
     # ts indicates bundle_timestamp
     # v2(bh) indicates bundle_hash/bh
     # ex indicates h_hash/id
