@@ -78,7 +78,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Tags do
             # therefore we fulfil the API call.
             # First we fetch the from reference for the caller processor.
             from = state[:from] # from reference.
-            reply(from, {:ok, [], hint ++ hints_list})
+            reply(from, {:ok, hint ++ hints_list})
             # now we stop the worker.
             {:stop, :normal, state}
           _ ->
@@ -153,7 +153,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Tags do
             # therefore we fulfil the API call.
             # First we fetch the from reference for the caller processor.
             from = state[:from] # from reference.
-            reply(from, {:ok, [], hint ++ hints_list})
+            reply(from, {:ok, hint ++ hints_list})
             # now we stop the worker.
             {:stop, :normal, state}
           _ ->

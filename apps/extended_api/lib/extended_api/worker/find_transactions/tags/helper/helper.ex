@@ -10,7 +10,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Tags.Helper do
   import OverDB.Builder.Query
 
   # these types check guards
-  defguard is_tag(tag) when is_binary(tag) and byte_size(tag) == 27
+  defguardp is_tag(tag) when is_binary(tag) and byte_size(tag) == 27
 
   @edge_cql "SELECT el FROM tangle.edge WHERE v1 = ? AND lb = 70"
 
@@ -69,12 +69,12 @@ defmodule ExtendedApi.Worker.FindTransactions.Tags.Helper do
     {:error, ok?}
   end
 
-  @spec edge_query(map, integer, nil | map) :: tuple
+  @spec edge_query(binary, integer, nil | map) :: tuple
   def edge_query(tag,ref, opts \\ nil) do
     {Tangle, Edge}
     |> select([:el]) |> type(:stream)
     |> assign(tag: tag)
-    |> cql(@edge_cql) 
+    |> cql(@edge_cql)
     |> values([{:blob, tag}])
     |> opts(opts || %{function: {EdgeFn, :create_hint, [tag]}})
     |> pk([v1: tag]) |> prepare?(true) |> reference({:edge, ref})
