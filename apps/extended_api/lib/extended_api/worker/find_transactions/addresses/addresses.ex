@@ -154,8 +154,8 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses do
         # response for paging request.
         %{opts: opts, bundle_hash: bh, current_index: ix, label: el, timestamp: ts}
           = query_state
-        # we pass the bh,el,ts,ix,opts as arguments to generate bundle query.
-        {ok?, _, _query_state} = Helper.bundle_query(bh, el, ts, ix, opts)
+        # we pass the bh,el,ts,ix,qf,opts as arguments to generate bundle query.
+        {ok?, _, _query_state} = Helper.bundle_query(bh, el, ts, ix, qf, opts)
         # verfiy to proceed or break.
         ok?(ok?, state)
       # remaining error handler. ( error, eg read_timeout, etc)

@@ -46,7 +46,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses.Helper do
 
   @spec _queries(list, map,list, integer) :: tuple
   defp _queries(_, _, _,_) do
-    {:error, :invalid_type}
+    {:error, :invalid}
   end
 
   @spec _queries(atom, list, map,list, integer, map) :: tuple
@@ -87,14 +87,14 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses.Helper do
     Anyway this function returns tuple.
   """
   @spec bundle_query(binary, integer, integer, integer, map) :: tuple
-  def bundle_query(bundle_hash, label, ts, ix, opts \\ %{function: {BundleFn, :construct}}) do
+  def bundle_query(bundle_hash, label, ts, ix, ref \\ :rand.uniform(@max_bigint), opts \\ %{function: {BundleFn, :construct}}) do
     {Tangle, Bundle}
     |> select([:b]) |> type(:stream)
     |> assign(bundle_hash: bundle_hash, current_index: ix, label: label, timestamp: ts)
     |> cql(@bundle_cql)
     |> values([{:varchar, bundle_hash}, {:tinyint, label}, {:varint, ts}, {:varint, ix}])
     |> opts(opts)
-    |> pk([bh: bundle_hash]) |> prepare?(true) |> reference({:bundle, :rand.uniform(@max_bigint)})
+    |> pk([bh: bundle_hash]) |> prepare?(true) |> reference({:bundle, ref})
     |> Addresses.query()
   end
 end
