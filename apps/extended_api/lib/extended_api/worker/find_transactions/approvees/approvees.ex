@@ -122,7 +122,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees do
         # re-send edge_query with updated opts using the same qf.
         {ok?, _,query_state} = Helper.edge_query(approvee, qf, opts)
         # we update the query_state and hashes(if any) in worker state.
-        state = %{state | qf => query_state, :hashes => hashes++hashes_list, :ref => ref}
+        state = %{Enum.into(queries_states,state) | qf => query_state, :hashes => hashes++hashes_list, :ref => ref}
         # verfiy to proceed or break.
         ok?(ok?, state)
       # error handler when edge_fn fails to send a bundle_query because of dead query engine.
@@ -166,7 +166,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees do
         # update hashes_list(if any)
         hashes_list = hashes++hashes_list
         # update worker's state
-        state = %{state | qf => query_state, :ref => ref, :hashes => hashes_list}
+        state = %{Enum.into(queries_states, state) | qf => query_state, :ref => ref, :hashes => hashes_list}
         # return updated state
         {:noreply, state}
       # error handler when edge_fn fails to send a bundle_query because of dead query engine.
