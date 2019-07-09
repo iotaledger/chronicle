@@ -15,4 +15,12 @@ defmodule ExtendedApiWeb.CommandView do
     %{hashes: hashes, hints: hints}
   end
 
+  def render("approvees.json", %{hashes: hashes}) do
+    %{hashes: hashes}
+  end
+
+  def render("tags.json", %{hints: hints}) do
+    %{hints: hints}
+  end
+
 end

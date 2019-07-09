@@ -36,8 +36,8 @@ defmodule ExtendedApiWeb.ErrorView do
     invalid/unsupported command.
   """
   @spec render(binary, map) :: Plug.Conn.t
-  def render("invalidType.json", _) do
-    %{error: "Invaild Type"}
+  def render("invalid.json", _) do
+    %{error: "Invaild"}
   end
 
   @spec render(binary, map) :: Plug.Conn.t
