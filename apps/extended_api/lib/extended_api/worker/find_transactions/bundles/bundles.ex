@@ -7,7 +7,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Bundles do
   alias ExtendedApi.Worker.FindTransactions.Bundles.Helper
   import ExtendedApi.Worker.Helper
 
-  @bundle_cql "SELECT b FROM tangle.bundle WHERE bh = ? AND lb IN ?"
+  @bundle_cql "SELECT b FROM tangle.bundle WHERE bh = ? AND lb = 30"
   @doc """
     This function start FindTransactions.Bundles worker.
   """

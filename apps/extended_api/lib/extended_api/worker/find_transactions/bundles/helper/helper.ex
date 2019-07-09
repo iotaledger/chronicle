@@ -41,7 +41,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Bundles.Helper do
 
   @spec _queries(list, integer,list, map) :: tuple
   defp _queries(_, _, _,_) do
-    {:error, :invalid_type}
+    {:error, :invalid}
   end
 
   @spec _queries(atom, list, map,list, integer, map) :: tuple
@@ -65,8 +65,8 @@ defmodule ExtendedApi.Worker.FindTransactions.Bundles.Helper do
   def bundle_query(bundle_hash, ref, opts \\ %{function: {BundleFn, :construct}}) do
     {Tangle, Bundle}
     |> select([:b]) |> type(:stream) |> assign(bundle_hash: bundle_hash)
-    |> cql("SELECT b FROM tangle.bundle WHERE bh = ? AND lb IN ?")
-    |> values([{:varchar, bundle_hash}, {{:list, :tinyint}, [30,40]}])
+    |> cql("SELECT b FROM tangle.bundle WHERE bh = ? AND lb = 30")
+    |> values([{:blob, bundle_hash}])
     |> opts(opts)
     |> pk([bh: bundle_hash]) |> prepare?(true) |> reference({:bundle, ref})
     |> Bundles.query()
