@@ -134,7 +134,7 @@ defmodule Core.Utils.Converter do
     obsolete_tag::27-bytes,timestamp::9-bytes,current_index::9-bytes,
     last_index::9-bytes,bundle_hash::81-bytes, trunk::81-bytes,
     branch::81-bytes,tag::27-bytes, atime::9-bytes, alower::9-bytes,
-    aupper::9-bytes, nonce::27-bytes,snapshot_index::binary>> = trytes
+    aupper::9-bytes, nonce::27-bytes>> = trytes
     # - First we convert some columns to varinteger form.
     last_index = trytes_to_integer(last_index)
     current_index = trytes_to_integer(current_index)
@@ -143,11 +143,10 @@ defmodule Core.Utils.Converter do
     atime = trytes_to_integer(atime)
     alower = trytes_to_integer(alower)
     aupper = trytes_to_integer(aupper)
-    snapshot_index = String.to_integer(snapshot_index)
     # - Put transaction line in map.
     Transaction.create(signature, address,value, obsolete_tag,timestamp,
       current_index,last_index,bundle_hash,trunk,branch,tag,atime,
-      alower,aupper,nonce,hash,snapshot_index)
+      alower,aupper,nonce,hash)
   end
 
 end

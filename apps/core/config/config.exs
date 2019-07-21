@@ -36,7 +36,7 @@ config :over_db, :core,
   __CONNS_PER_SHARD__: 1,
   __LOGGED_PER_SHARD__: 1,
   __UNLOGGED_PER_SHARD__: 1,
-  __COUNTER_PER_SHARD__: 1
+  __COUNTER_PER_SHARD__: 1,
 ##########################################################
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment

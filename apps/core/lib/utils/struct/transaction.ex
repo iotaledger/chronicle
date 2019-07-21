@@ -1,5 +1,5 @@
 defmodule Core.Utils.Struct.Transaction do
-  
+
   defstruct [
     :attachment_timestamp_upper,
     :attachment_timestamp_lower,
@@ -42,7 +42,7 @@ defmodule Core.Utils.Struct.Transaction do
 
   def create(signature, address,value, obsolete_tag,timestamp,
     current_index,last_index,bundle_hash,trunk,branch,tag,atime,
-    alower,aupper,nonce,hash,snapshot_index) do
+    alower,aupper,nonce,hash,snapshot_index \\ nil) do
     %__MODULE__{signature_or_message: signature,
      address: address,
      value: value,  # integer type
@@ -59,7 +59,7 @@ defmodule Core.Utils.Struct.Transaction do
      attachment_timestamp_upper: aupper,  # integer type
      nonce: nonce,
      hash: hash,
-     snapshot_index: snapshot_index  # integer type
+     snapshot_index: snapshot_index  # nil or integer type
      }
   end
 
