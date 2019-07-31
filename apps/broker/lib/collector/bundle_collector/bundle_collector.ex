@@ -37,7 +37,9 @@ defmodule Broker.Collector.BundleCollector do
           # send after to free non-active bundle from state,
           # we tell if the bundle is not active by checking
           # the recent transaction index is still the same.
-          Process.send_after(self(), {:free, 0, hash}, @bundle_tll)
+          Process.send_after(self(), {:active?, 0, hash}, @bundle_tll)
+          # we should request a tx_collector by using the trunk
+
           # return state
           state
       end
@@ -50,9 +52,17 @@ defmodule Broker.Collector.BundleCollector do
     case Map.fetch!(state, ref_id) do
       list when is_list(list) ->
         new_ref_id_state = [tx_object | list]
+        # send_after to delete the bundle if it was not active.
+        Process.send_after(self(), {:active?,tx_object[:current_index],tx_object[:hash]}, @bundle_tll)
+        # we should request a tx_collector by using the trunk
+
+        # return updated state
         Map.put(state, ref_id, new_ref_id_state)
       nil ->
-        #
+        # this means the bundle has already being deleted before receiving the request response.
+        # NOTE: this might only happen due to rare race condition, and that's totally fine
+        # as long we return the state
+        state
     end
 
     {:noreply, state}

@@ -1,14 +1,14 @@
-defmodule Broker.Collector.Feeder do
+defmodule Broker.Collector.SnFeeder do
   @moduledoc """
 
-  Documentation for Broker.Collector.Feeder.
+  Documentation for Broker.Collector.SnFeeder.
   This lightweight processor is responsible to handle random
-  flow of transactions, mostly through ZMQ topic.
+  flow of confirmed transactions, through ZMQ 'sn_trytes' topic
+  with the following format: <<tx_trytes, hash, milestone_index>>
 
   """
   use GenStage
   require Logger
-  alias GenStage.PartitionDispatcher
   alias Broker.Collector.Feeder.Helper
 
   @spec start_link(Keyword.t) :: tuple
@@ -26,17 +26,14 @@ defmodule Broker.Collector.Feeder do
     Process.put(:host, args[:host])
     # fetch/put port
     Process.put(:port, args[:port])
-    # fetch partitions num
-    p = args[:partitions]
-    # this function handle the event(tx)
-    # NOTE: dispatching should be applied only on the transaction hash.
-    function = fn event -> {event, :erlang.phash2(elem(event,0), p)} end
-    {:producer, nil, dispatcher: {PartitionDispatcher, partitions: 0..p-1}, hash: function}
+    # setup
+    send(self(), :setup)
+    {:producer, nil}
   end
 
   @spec handle_subscribe(atom, tuple | list, tuple, map) :: tuple
   def handle_subscribe(:consumer, _, _from, state) do
-    Logger.info("Feeder: #{Process.get(:name)} got subscribed_to TxCollector")
+    Logger.info("SnFeeder: #{Process.get(:name)} got subscribed_to SnDistributor")
     {:automatic, state}
   end
 
@@ -52,7 +49,7 @@ defmodule Broker.Collector.Feeder do
           # loop
           send(self(), :tx_trytes)
           # create events
-          [{hash, tx_trytes}]
+          [{hash, tx_trytes, nil}]
         {:error, _reason} ->
           # handle error, moslty establishing a new socket.
           send(self(), :setup)

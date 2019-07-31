@@ -10,7 +10,10 @@ defmodule Broker.MixProject do
       deps_path: "../../deps",
       lockfile: "../../mix.lock",
       elixir: "~> 1.8",
+      make_executable: "make",
+      make_makefile: "Makefile",
       start_permanent: Mix.env() == :prod,
+      compilers: [:elixir_make] ++ Mix.compilers,
       deps: deps()
     ]
   end
@@ -25,6 +28,9 @@ defmodule Broker.MixProject do
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
-    [{:chumak, "~> 1.3"}]
+    [
+      {:chumak, "~> 1.3"},
+      {:elixir_make, "~> 0.6", runtime: false}
+    ]
   end
 end

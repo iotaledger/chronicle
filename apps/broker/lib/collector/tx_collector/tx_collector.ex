@@ -14,6 +14,7 @@ defmodule Broker.Collector.TxCollector do
 
   @tx_ttl Application.get_env(:broker, :tx_ttl) || 10000
   @bundle_ttl Application.get_env(:broker, :bundle_ttl) || 10000
+  @feeders Application.get_env(:broker, :feeders) || 2 # # TODO: change it to 2 once sn topic is ready
 
   @spec start_link(Keyword.t) :: tuple
   def start_link(args) do
@@ -21,8 +22,12 @@ defmodule Broker.Collector.TxCollector do
   end
 
   @spec init(Keyword.t) :: tuple
-  def init(_) do
-    {:consumer, %{subscription: nil}}
+  def init(args) do
+    p = args[:partition]
+    subscribe_to = for n <- 1..@feeders do
+      {:"t#{n}", partition: p}
+    end
+    {:consumer, %{subscription: nil}, subscribe_to: subscribe_to}
   end
 
   def handle_subscribe(:producer, _options, from, state) do

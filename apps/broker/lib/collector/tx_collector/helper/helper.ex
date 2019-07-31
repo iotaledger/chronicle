@@ -28,4 +28,7 @@ defmodule Broker.Collector.TxCollector.Helper do
     Converter.trytes_to_tx_object(hash, tx_trytes)
   end
 
+  def subscribe_to() do
+
+  end
 end
