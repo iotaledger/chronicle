@@ -2,9 +2,9 @@ defmodule Broker.Collector.SnFeeder do
   @moduledoc """
 
   Documentation for Broker.Collector.SnFeeder.
-  This lightweight processor is responsible to handle random
+  This lightweight processor is responsible to handle random or ordered
   flow of confirmed transactions, through ZMQ 'sn_trytes' topic
-  with the following format: <<tx_trytes, hash, milestone_index>>
+  with the following format: <<trytes, hash, milestone_index>>
 
   """
   use GenStage
@@ -13,7 +13,8 @@ defmodule Broker.Collector.SnFeeder do
 
   @spec start_link(Keyword.t) :: tuple
   def start_link(args) do
-    GenStage.start_link(__MODULE__, args, name: args[:name])
+    name =  :"sf#{args[:num]}"
+    GenStage.start_link(__MODULE__, [{:name, name}| args], name: args[:name])
   end
 
   @spec init(Keyword.t) :: tuple
@@ -21,7 +22,7 @@ defmodule Broker.Collector.SnFeeder do
     # put name in process dict state
     Process.put(:name, args[:name])
     # fetch/put topic
-    Process.put(:topic, args[:topic])
+    Process.put(:topic, :sn_trytes)
     # fetch/put host
     Process.put(:host, args[:host])
     # fetch/put port
@@ -42,14 +43,14 @@ defmodule Broker.Collector.SnFeeder do
     {:noreply, [], state}
   end
 
-  def handle_info(:tx_trytes, socket) do
+  def handle_info(:sn_trytes, socket) do
     events =
       case Helper.recv(socket) do
-        {:ok, <<"tx_trytes ", tx_trytes::2755-bytes,_,hash::81-bytes>>} ->
+        {:ok, <<"sn_trytes ", tx_trytes::2673-bytes,_,hash::81-bytes,_, snapshot_index::binary>>} ->
           # loop
-          send(self(), :tx_trytes)
+          send(self(), :sn_trytes)
           # create events
-          [{hash, tx_trytes, nil}]
+          [{hash, tx_trytes, String.to_integer(snapshot_index)}]
         {:error, _reason} ->
           # handle error, moslty establishing a new socket.
           send(self(), :setup)

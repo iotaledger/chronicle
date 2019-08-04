@@ -1,9 +1,9 @@
-defmodule Broker.Collector.TxCollector do
+defmodule Broker.Collector.SnCollector do
   @moduledoc """
 
-  Documentation for Broker.Collector.TxCollector.
+  Documentation for Broker.Collector.SnCollector.
   This lightweight processor(consumer) is responsible to handle dispatched
-  flow of transactions from TxValidator(s) producer.
+  flow of transactions from SnValidator(s) producer.
 
   """
   use GenStage
@@ -14,7 +14,7 @@ defmodule Broker.Collector.TxCollector do
 
   @tx_ttl Application.get_env(:broker, :tx_ttl) || 10000 # 10 seconds
   @bundle_ttl Application.get_env(:broker, :bundle_ttl) || 10000 # 10 seconds
-  @tx_validator Application.get_env(:broker, :tx_validator) || 6 # concurrent validators whom run curl_p
+  @sn_validator Application.get_env(:broker, :sn_validator) || 6 # concurrent validators whom run curl_p
 
   @spec start_link(Keyword.t) :: tuple
   def start_link(args) do
@@ -24,14 +24,14 @@ defmodule Broker.Collector.TxCollector do
   @spec init(Keyword.t) :: tuple
   def init(args) do
     p = args[:partition]
-    subscribe_to = for n <- 1..@tx_validator do
-      {:"tv#{n}", partition: p}
+    subscribe_to = for n <- 1..@sn_validator do
+      {:"sv#{n}", partition: p}
     end
     {:consumer, nil, subscribe_to: subscribe_to}
   end
 
   def handle_subscribe(:producer, _options, from, state) do
-    Logger.info("TxCollector: #{Process.get(:name)} got subscribed_to TxValidator")
+    Logger.info("SnCollector: #{Process.get(:name)} got subscribed_to SnValidator")
     {:automatic, state}
   end
 

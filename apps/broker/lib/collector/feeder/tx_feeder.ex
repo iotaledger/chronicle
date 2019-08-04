@@ -13,7 +13,8 @@ defmodule Broker.Collector.TxFeeder do
 
   @spec start_link(Keyword.t) :: tuple
   def start_link(args) do
-    GenStage.start_link(__MODULE__, args, name: args[:name])
+    name =  :"tf#{args[:num]}"
+    GenStage.start_link(__MODULE__, [{:name, name}| args], name: name)
   end
 
   @spec init(Keyword.t) :: tuple
@@ -45,11 +46,11 @@ defmodule Broker.Collector.TxFeeder do
   def handle_info(:tx_trytes, socket) do
     events =
       case Helper.recv(socket) do
-        {:ok, <<"tx_trytes ", tx_trytes::2673-bytes,_,_hash::81-bytes>>} ->
+        {:ok, <<"tx_trytes ", tx_trytes::2673-bytes,_,hash::81-bytes>>} ->
           # loop to receive the next tx_trytes
           send(self(), :tx_trytes)
           # create events
-          [tx_trytes]
+          [{hash, tx_trytes}]
         {:error, _reason} ->
           # handle error, moslty establishing a new socket.
           send(self(), :setup)

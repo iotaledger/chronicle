@@ -8,9 +8,20 @@ use Mix.Config
 # if you want to provide default values for your application for
 # third-party users, it should be done in your "mix.exs" file.
 
-# You can configure your application as:
-#
-#     config :broker, key: :value
+# NOTE: Here you can configure your broker application:
+##########################################################
+config :broker,
+  __TOPICS__: [
+    tx_trytes: [
+      # add the zmq nodes urls to listen to tx_trytes(unconfirmed transactions) topic
+    ],
+    sn_trytes: [
+      # add the zmq nodes urls to listen to sn_trytes(confirmed transactions) topic
+    ]
+  ],
+  __VALIDATORS_PER_TOPIC__: 6, # concurrent transactions validators per topic(tx_trytes, sn_trytes)
+  __COLLECTORS_PER_TOPIC__: 6
+
 #
 # and access this configuration in your application as:
 #

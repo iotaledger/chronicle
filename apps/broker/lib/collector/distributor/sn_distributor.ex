@@ -3,37 +3,44 @@ defmodule Broker.Collector.Distributor do
 
   Documentation for Broker.Collector.Distributor.
   This lightweight processor will receive all the
-  flow of transactions from tx_feeder(s) and it will
+  flow of transactions from sn_feeder(s) and it will
   insert them to FIFO queue and will receive ask
-  requests from tx_validator(s).
+  requests from sn_validator(s).
 
   # NOTE: this is a :producer_consumer
   """
-  @max_demand Application.get_env(:broker, :max_demand)
+  @max_demand Application.get_env(:broker, :__MAX_DEMAND__) || 64
+  @sn_feeders_num length(Application.get_env(:broker, :__TOPICS__)[:sn_trytes])
+
   require Logger
-  
   use GenStage
 
   @spec start_link(Keyword.t) :: tuple
   def start_link(args) do
-    GenStage.start_link(__MODULE__, args, name: args[:name])
+    GenStage.start_link(__MODULE__, args, name: :sn_distributor)
   end
 
   @spec init(Keyword.t) :: tuple
   def init(args) do
-    Process.put(:name, args[:name])
-    {:producer_consumer, :queue.new()}
+    Process.put(:name, :tx_distributor)
+    opts = [
+      subscribe_to:
+        for n <- 1..@sn_feeders_num do
+          :"sf#{n}"
+        end
+    ]
+    {:producer_consumer, :queue.new(), opts}
   end
 
   @spec handle_subscribe(atom, tuple | list, tuple, tuple) :: tuple
   def handle_subscribe(:consumer, _, _from, queue) do
-    Logger.info("Distributor: #{Process.get(:name)} got subscribed_to Validator")
+    Logger.info("SnDistributor: #{Process.get(:name)} got subscribed_to SnValidator")
     {:manual, queue}
   end
 
   @spec handle_subscribe(atom, tuple | list, tuple, map) :: tuple
   def handle_subscribe(:producer, _, _from, queue) do
-    Logger.info("Distributor: #{Process.get(:name)} got subscribed_to Feeder")
+    Logger.info("SnDistributor: #{Process.get(:name)} got subscribed_to SnFeeder")
     {:automatic, queue}
   end
 
@@ -63,7 +70,7 @@ defmodule Broker.Collector.Distributor do
   end
 
   # take unique elements from queue
-  def take_unique(q, amount), do: do_take(q, amount, [], amount)
+  defp take_unique(q, amount), do: do_take(q, amount, [], amount)
   defp do_take(q, n, acc, n_acc) when n > 0 do
     case :queue.out(q) do
       {{:value, e}, rest} ->
