@@ -1,25 +1,29 @@
-defmodule Broker.Collector.SnValidator do
+defmodule Broker.Collector.Validator do
 
-  @max_demand Application.get_env(:broker, :max_demand) || 64
-  @min_demand Application.get_env(:broker, :min_demand) || 0
+  @max_demand Application.get_env(:broker, :__MAX_DEMAND__) || 64
+  @min_demand Application.get_env(:broker, :__MIN_DEMAND__) || 0
 
+  use GenStage
   require Logger
 
   @spec start_link(Keyword.t) :: tuple
   def start_link(args) do
-    GenStage.start_link(__MODULE__, [], name: args[:name])
+    name = name_by_topic?(args)
+    GenStage.start_link(__MODULE__, [name: name] ++ args, name: name)
   end
 
   @spec init(Keyword.t) :: tuple
   def init(args) do
-    partitions = args[:partitions]
-    dispatch_fn = fn(event) -> {event, :erlang.phash2(elem(0, event), partitions)} end
+    # put name
+    Process.put(:name, args[:name])
+    partitions = args[:transaction_partitions]
+    dispatch_fn = fn(event) -> {event, :erlang.phash2(elem(event,0), partitions)} end
     opts = [
-      # this option make SnValidator act as partitionDispatcher to SnCollectors
+      # this option make Validator act as partitionDispatcher to tx Collectors
       dispatcher: {GenStage.PartitionDispatcher, partitions: partitions,
         hash: dispatch_fn},
-      # this option to subscribe to SnValidator producer(distributor)
-      subscribe_to: [{:sn_distributor, max_demand: @max_demand, min_demand: @min_demand}]
+      # this option to subscribe to Validator producer(distributor)
+      subscribe_to: [{:tx_distributor, max_demand: @max_demand, min_demand: @min_demand}]
     ]
     {:producer_consumer, %{producer: nil}, opts}
   end
@@ -28,13 +32,13 @@ defmodule Broker.Collector.SnValidator do
   def handle_subscribe(:producer, _, from, state) do
     # we add producer(distributor from_reference to be able to send ask requests)
     state = %{state | producer: from}
-    Logger.info("SnValidator: #{Process.get(:name)} got subscribed_to Distributor")
-    {:manual, state}
+    Logger.info("Validator: #{Process.get(:name)} got subscribed_to Distributor")
+    {:automatic, state}
   end
 
   @spec handle_subscribe(atom, tuple | list, tuple, map) :: tuple
   def handle_subscribe(:consumer, _, _from, state) do
-    Logger.info("SnValidator: #{Process.get(:name)} got subscribed_to SnCollector")
+    Logger.info("Validator: #{Process.get(:name)} got subscribed_to Transaction Collector")
     # we keep it automatic to dispatch events on the fly
     {:automatic, state}
   end
@@ -43,22 +47,35 @@ defmodule Broker.Collector.SnValidator do
     Handle events from producer(distributor)
     - validate the events(txs)
     - ask for max_demand
-    - send as events to sn_collector(s)
+    - send as events to tx_collector(s)
   """
   @spec handle_events(list, tuple, map) :: tuple
   def handle_events(events, _from, state) do
     # process the events and return list of booleans
     events_status = process_events(events)
-    # ask sn_distributor for more events at max_demand.
-    GenStage.ask(:sn_distributor, @max_demand)
     # extract_valid events only
     events = extract_valid(events_status,events)
-    # pass events to sn_collector(s)
+    # pass events to tx_collector(s)
     {:noreply, events, state}
   end
 
+  def handle_info(:ask, state) do
+    GenStage.ask(state[:producer], @max_demand)
+    {:noreply,[],state}
+  end
+
+  def child_spec(args) do
+    %{
+      id: name_by_topic?(args),
+      start: {__MODULE__, :start_link, [args]},
+      type: :worker,
+      restart: :permanent,
+      shutdown: 500
+    }
+  end
+
   # private functions to process the events
-  defp process_events(events,hashes\\[],
+  defp process_events(events,hashes\\<<>>,
       p0\\<<>>,p1\\<<>>,p2\\<<>>,p3\\<<>>,p4\\<<>>,p5\\<<>>,
       p6\\<<>>,p7\\<<>>,p8\\<<>>,p9\\<<>>,p10\\<<>>,p11\\<<>>,p12\\<<>>,
       p13\\<<>>,p14\\<<>>,p15\\<<>>,p16\\<<>>,p17\\<<>>,p18\\<<>>,p19\\<<>>,
@@ -70,11 +87,11 @@ defmodule Broker.Collector.SnValidator do
       c13::81-bytes,c14::81-bytes,c15::81-bytes,c16::81-bytes,c17::81-bytes,
       c18::81-bytes,c19::81-bytes,c20::81-bytes,c21::81-bytes,c22::81-bytes,
       c23::81-bytes,c24::81-bytes,c25::81-bytes,c26::81-bytes,c27::81-bytes,
-      c28::81-bytes,c29::81-bytes,c30::81-bytes,c31::81-bytes,c32::81-bytes>>, _snapshot_index}
+      c28::81-bytes,c29::81-bytes,c30::81-bytes,c31::81-bytes,c32::81-bytes>>,_nil}
       | rest],hashes,p0,p1,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11,p12,p13,p14,p15,p16,p17,
       p18,p19,p20,p21,p22,p23,p24,p25,p26,p27,p28,p29,p30,p31,p32) do
         # keep processing events
-        process_events(rest,[hash| hashes],p0<>c0,p1<>c1,p2<>c2,p3<>c3,p4<>c4,
+        process_events(rest,hashes<>hash,p0<>c0,p1<>c1,p2<>c2,p3<>c3,p4<>c4,
           p5<>c5,p6<>c6,p7<>c7,p8<>c8,p9<>c9,p10<>c10,p11<>c11,p12<>c12,p13<>c13,
           p14<>c14,p15<>c15,p16<>c16,p17<>c17,p18<>c18,p19<>c19,p20<>c20,p21<>c21,
           p22<>c22,p23<>c23,p24<>c24,p25<>c25,p26<>c26,p27<>c27,p28<>c28,p29<>c29,
@@ -85,11 +102,11 @@ defmodule Broker.Collector.SnValidator do
       p11,p12,p13,p14,p15,p16,p17,p18,p19,p20,p21,p22,p23,p24,p25,p26,p27,
       p28,p29,p30,p31,p32) do
         # get the length(tx_count) of events , we can do that by checking the length of hashes:
-        tx_count = length(hashes)
+        tx_count = div(byte_size(hashes),81)
         # now we have the completed 0..32 chunks
         # therefore we should call add_trytes and absorb for each part(p0..p32)
         # ############## init curl_p ################
-        pecurl = Nifs.curl_p_init()
+        {:ok, pecurl} = Nifs.curl_p_init()
         # ####### add_trytes and absorb #############
         # add_trytes for p0
         Nifs.add_trytes(pecurl,tx_count,p0)
@@ -226,12 +243,11 @@ defmodule Broker.Collector.SnValidator do
         ############ squeeze #############
         Nifs.squeeze(pecurl)
         ############ get trytes and compare hashes, should return [bool] #############
-        # reverse hashes to make it.
-        [true]
+        Nifs.get_status(pecurl, tx_count, hashes)
   end
 
-  def extract_valid(events_status, events, valid_events_acc \\ [])
-  def extract_valid([event_status | rest_status],[event | rest_events], valid_events_acc) do
+  defp extract_valid(events_status, events, valid_events_acc \\ [])
+  defp extract_valid([event_status | rest_status],[event | rest_events], valid_events_acc) do
     valid_events_acc =
       if event_status do
         [event | valid_events_acc]
@@ -241,8 +257,18 @@ defmodule Broker.Collector.SnValidator do
     extract_valid(rest_status,rest_events,valid_events_acc)
   end
 
-  def extract_valid([],[], valid_events_acc) do
+  defp extract_valid([],[], valid_events_acc) do
     valid_events_acc
+  end
+
+  # generate the validator name by topic name
+  defp name_by_topic?(args) do
+    case args[:topic] do
+      :tx_trytes ->
+        :"tv#{args[:num]}"
+      :sn_trytes ->
+        :"sv#{args[:num]}"
+    end
   end
 
 end

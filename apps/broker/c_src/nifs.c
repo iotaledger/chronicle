@@ -3,6 +3,7 @@
 #include "common/crypto/curl-p/ptrit.h" // ptrit_curl impl
 #include "common/trinary/trit_ptrit.h" // trits <-> ptrits conversion
 #include "common/trinary/trit_tryte.h" // trits <-> trytes conversion
+#include <string.h>
 
 #define DEBUG 3
 
@@ -24,10 +25,9 @@ ERL_NIF_TERM atom_true;
 ERL_NIF_TERM atom_false;
 
 void
-free_res(ErlNifEnv* env, void* res)
+free_res(ErlNifEnv* env, void* obj)
 {
   // free curl_p resource
-  ptrit_curl_reset(res); //?
 }
 
 static int
@@ -36,8 +36,7 @@ open_resource(ErlNifEnv* env)
     const char* mod = "Elixir.Nifs";
     const char* name = "PECurl";
     int flags = ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER;
-
-    RES_TYPE = enif_open_resource_type(env, mod, name, free_res, flags, NULL);
+    RES_TYPE = enif_open_resource_type(env, mod, name, NULL, flags, NULL);
     if(RES_TYPE == NULL) return -1;
     return 0;
 }
@@ -149,6 +148,8 @@ add_trytes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     {
 	     return enif_make_badarg(env);
     }
+    // clear acc in resource
+    memset(pecurl->acc, 0, sizeof(pecurl->acc));
     // get tx_count
     if(!enif_get_int(env, argv[1], &tx_count))
     {
@@ -173,11 +174,11 @@ add_trytes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 
 // args: PECurl *pecurl, int tx_count (0 <= tx_count < 64), tryte_t tx_hash_trytes[81 * tx_count]
 static ERL_NIF_TERM
-get_trytes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+get_trytes_and_cmp_hashes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 {
     PECurl *pecurl;
     int tx_count; // tx_count of the chunk
-    ErlNifBinary out; // out.data(trytes) of the chunk
+    ErlNifBinary in; // in.data(trytes) of the chunk
     if(argc != 3)
     {
         return enif_make_badarg(env);
@@ -192,18 +193,25 @@ get_trytes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
     {
        return enif_make_badarg(env);
     }
-    enif_alloc_binary(81, &out);
-    //strncpy((tryte_t*)out.data, TRYTES, NUM_TRYTES_SERIALIZED_TRANSACTION);
+    // get tx_hashes line
+    if(!enif_inspect_binary(env, argv[2], &in))
+      return enif_make_badarg(env);
+
     // get trytes
-    tryte_t *tx_hash = (tryte_t *)out.data;
+    tryte_t const *tx_hash = (tryte_t const *)in.data;
     ERL_NIF_TERM result [tx_count];
-  //  DEBUG_PRINT("Debug level: %d", tx_count);
+
     for(int tx_index = 0; tx_index < tx_count; ++tx_index, tx_hash += 81)
     {
       trit_t trits[243];
+      tryte_t calculated_hash[81];
       ptrits_to_trits(pecurl->acc, trits, tx_index, 243);
-      trits_to_trytes(trits ,tx_hash, 243); // `length` argument is the length of the trits, not trytes
-      result[tx_index] = atom_true;
+      trits_to_trytes(trits ,calculated_hash, 243); // `length` argument is the length of the trits, not trytes
+      if (0 == memcmp(calculated_hash, tx_hash, 81)) {
+        result[tx_index] = atom_true;
+      } else {
+        result[tx_index] = atom_false;
+      }
     }
     return enif_make_list_from_array(env, result,  tx_count);
 }
@@ -214,7 +222,7 @@ static ErlNifFunc nif_funcs[] = {
     {"absorb", 1, absorb},
     {"squeeze", 1, squeeze},
     {"add_trytes", 3, add_trytes},
-    {"get_trytes", 3, get_trytes}
+    {"get_status", 3, get_trytes_and_cmp_hashes}
 };
 
 ERL_NIF_INIT(Elixir.Nifs, nif_funcs, &load, &reload, &upgrade, NULL);

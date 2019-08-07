@@ -1,9 +1,9 @@
 defmodule Broker.Collector.SnCollector do
   @moduledoc """
 
-  Documentation for Broker.Collector.SnCollector.
+  Documentation for Broker.Collector.TxCollector.
   This lightweight processor(consumer) is responsible to handle dispatched
-  flow of transactions from SnValidator(s) producer.
+  flow of transactions from TxValidator(s) producer.
 
   """
   use GenStage
@@ -12,26 +12,28 @@ defmodule Broker.Collector.SnCollector do
   alias Broker.Collector.Ring
   alias Broker.Collector.TxCollector.Helper
 
-  @tx_ttl Application.get_env(:broker, :tx_ttl) || 10000 # 10 seconds
-  @bundle_ttl Application.get_env(:broker, :bundle_ttl) || 10000 # 10 seconds
-  @sn_validator Application.get_env(:broker, :sn_validator) || 6 # concurrent validators whom run curl_p
+  @tx_ttl Application.get_env(:broker, :__TX_TTL__) || 30000 # 30 seconds
+  @bundle_ttl Application.get_env(:broker, :__BUNDLE_TTL__) || 30000 # 30 seconds
 
   @spec start_link(Keyword.t) :: tuple
   def start_link(args) do
-    GenStage.start_link(__MODULE__, args, name: args[:name])
+    name = :"sc#{args[:num]}"
+    GenStage.start_link(__MODULE__, Keyword.put(args, :name, name), name: name)
   end
 
   @spec init(Keyword.t) :: tuple
   def init(args) do
-    p = args[:partition]
-    subscribe_to = for n <- 1..@sn_validator do
+    # put name
+    Process.put(:name, args[:name])
+    p = args[:num]
+    subscribe_to = for n <- 0..args[:transaction_partitions]-1 do
       {:"sv#{n}", partition: p}
     end
-    {:consumer, nil, subscribe_to: subscribe_to}
+    {:consumer, %{}, subscribe_to: subscribe_to}
   end
 
   def handle_subscribe(:producer, _options, from, state) do
-    Logger.info("SnCollector: #{Process.get(:name)} got subscribed_to SnValidator")
+    Logger.info("SnCollector: #{Process.get(:name)} got subscribed_to Validator")
     {:automatic, state}
   end
 
@@ -67,7 +69,7 @@ defmodule Broker.Collector.SnCollector do
   # handler to remove request from state
   def handle_info({:rm, hash}, state) do
     state =
-      case Map.fetch!(state, hash) do
+      case Map.get(state, hash) do
         {1,_} ->
           Map.delete(state, hash)
         {counter, [_| b_collectors_list]} ->
@@ -84,9 +86,19 @@ defmodule Broker.Collector.SnCollector do
     {:noreply, [], state}
   end
 
+  def child_spec(args) do
+    %{
+      id: :"sc#{args[:num]}",
+      start: {__MODULE__, :start_link, [args]},
+      type: :worker,
+      restart: :permanent,
+      shutdown: 500
+    }
+  end
+
   # start of private functions related to processing events
-  defp process_events([{hash, trytes}|tail], state) do
-    state = process_event(hash, trytes, state)
+  defp process_events([{hash, trytes, snapshot_index}|tail], state) do
+    state = process_event(hash, trytes,snapshot_index, state)
     process_events(tail, state)
   end
 
@@ -94,17 +106,17 @@ defmodule Broker.Collector.SnCollector do
     state
   end
 
-  defp process_event(hash, trytes, state) do
+  defp process_event(hash, trytes,snapshot_index, state) do
     # we create a tx-object(struct)
-    tx_object = Helper.create_tx_object(hash, trytes)
+    tx_object = Helper.create_tx_object(hash, trytes, snapshot_index)
     # we process the tx_object.
     process_tx_object(hash,tx_object,state)
   end
 
   # current_index: 0, is_head = true. so no processing is needed.
   defp process_tx_object(hash, %{current_index: 0} = tx_object, state) do
-    # target a bundle_collector by tx_hash
-    pid_name = Ring.bundle_collector?(hash)
+    # target a sn_bundle_collector by tx_hash
+    pid_name = Ring.sn_bundle_collector?(hash)
     # send this to a bundle_collector
     GenStage.cast(pid_name, {:new, tx_object})
     # return state
@@ -135,7 +147,7 @@ defmodule Broker.Collector.SnCollector do
 
   defp process_request(hash, ref_id, pid_name, state) do
     # fetch the tx-object/waiters(if any) from state
-    case Map.fetch!(state, hash) do
+    case Map.get(state, hash) do
       tx_object when is_map(tx_object) ->
         # send tx_object to pid_name with ref_id
         GenStage.cast(pid_name, {ref_id, tx_object})

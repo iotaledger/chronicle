@@ -24,11 +24,8 @@ defmodule Broker.Collector.TxCollector.Helper do
   end
 
   @spec create_tx_object(binary,binary) :: Transaction.t
-  def create_tx_object(hash, tx_trytes) do
-    Converter.trytes_to_tx_object(hash, tx_trytes)
+  def create_tx_object(hash, tx_trytes, snapshot_index \\ nil) do
+    Converter.trytes_to_tx_object(hash, tx_trytes, snapshot_index)
   end
 
-  def subscribe_to() do
-
-  end
 end

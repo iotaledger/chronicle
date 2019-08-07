@@ -4,11 +4,16 @@ defmodule Broker.Collector.Feeder.Helper do
     This module hold the helper ZMQ functions.
   """
   @spec setup_feed_source(binary, list, integer) :: tuple
-  def setup_feed_source(topic,host,port) when is_binary(topic) and is_list(host) and is_integer(port) do
+  def setup_feed_source(topic,host,port) when is_atom(topic) and is_list(host) and is_integer(port) do
     # first we create a zmq_socket and subscribe to that topic
     case create_zmq_socket_and_subscribe(topic) do
       {:ok, socket} ->
-        connect_to_socket(socket, host, port)
+        case connect_to_socket(socket, host, port) do
+          {:ok, _bindpid} ->
+            {:ok, socket}
+          err? ->
+            err?
+        end
       err? ->
         err?
     end

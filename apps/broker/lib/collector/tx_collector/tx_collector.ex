@@ -12,22 +12,24 @@ defmodule Broker.Collector.TxCollector do
   alias Broker.Collector.Ring
   alias Broker.Collector.TxCollector.Helper
 
-  @tx_ttl Application.get_env(:broker, :tx_ttl) || 10000 # 10 seconds
-  @bundle_ttl Application.get_env(:broker, :bundle_ttl) || 10000 # 10 seconds
-  @tx_validator Application.get_env(:broker, :tx_validator) || 6 # concurrent validators whom run curl_p
+  @tx_ttl Application.get_env(:broker, :__TX_TTL__) || 30000 # 30 seconds
+  @bundle_ttl Application.get_env(:broker, :__BUNDLE_TTL__) || 30000 # 30 seconds
 
   @spec start_link(Keyword.t) :: tuple
   def start_link(args) do
-    GenStage.start_link(__MODULE__, args, name: args[:name])
+    name = :"tc#{args[:num]}"
+    GenStage.start_link(__MODULE__, Keyword.put(args, :name, name), name: name)
   end
 
   @spec init(Keyword.t) :: tuple
   def init(args) do
-    p = args[:partition]
-    subscribe_to = for n <- 1..@tx_validator do
+    # put name
+    Process.put(:name, args[:name])
+    p = args[:num]
+    subscribe_to = for n <- 0..args[:transaction_partitions]-1 do
       {:"tv#{n}", partition: p}
     end
-    {:consumer, nil, subscribe_to: subscribe_to}
+    {:consumer, %{}, subscribe_to: subscribe_to}
   end
 
   def handle_subscribe(:producer, _options, from, state) do
@@ -67,7 +69,7 @@ defmodule Broker.Collector.TxCollector do
   # handler to remove request from state
   def handle_info({:rm, hash}, state) do
     state =
-      case Map.fetch!(state, hash) do
+      case Map.get(state, hash) do
         {1,_} ->
           Map.delete(state, hash)
         {counter, [_| b_collectors_list]} ->
@@ -84,8 +86,18 @@ defmodule Broker.Collector.TxCollector do
     {:noreply, [], state}
   end
 
+  def child_spec(args) do
+    %{
+      id: :"tc#{args[:num]}",
+      start: {__MODULE__, :start_link, [args]},
+      type: :worker,
+      restart: :permanent,
+      shutdown: 500
+    }
+  end
+
   # start of private functions related to processing events
-  defp process_events([{hash, trytes}|tail], state) do
+  defp process_events([{hash, trytes, _}|tail], state) do
     state = process_event(hash, trytes, state)
     process_events(tail, state)
   end
@@ -104,7 +116,7 @@ defmodule Broker.Collector.TxCollector do
   # current_index: 0, is_head = true. so no processing is needed.
   defp process_tx_object(hash, %{current_index: 0} = tx_object, state) do
     # target a bundle_collector by tx_hash
-    pid_name = Ring.bundle_collector?(hash)
+    pid_name = Ring.tx_bundle_collector?(hash)
     # send this to a bundle_collector
     GenStage.cast(pid_name, {:new, tx_object})
     # return state
@@ -135,7 +147,7 @@ defmodule Broker.Collector.TxCollector do
 
   defp process_request(hash, ref_id, pid_name, state) do
     # fetch the tx-object/waiters(if any) from state
-    case Map.fetch!(state, hash) do
+    case Map.get(state, hash) do
       tx_object when is_map(tx_object) ->
         # send tx_object to pid_name with ref_id
         GenStage.cast(pid_name, {ref_id, tx_object})
