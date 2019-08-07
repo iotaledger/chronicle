@@ -128,8 +128,8 @@ defmodule Core.Utils.Converter do
   @doc """
     Convert trytes to tx-object
   """
-  @spec trytes_to_tx_object(binary, binary) :: Transaction.t
-  def trytes_to_tx_object(hash, trytes) do
+  @spec trytes_to_tx_object(binary, binary, integer) :: Transaction.t
+  def trytes_to_tx_object(hash, trytes, snapshot_index) do
     <<signature::2187-bytes,address::81-bytes,value::27-bytes,
     obsolete_tag::27-bytes,timestamp::9-bytes,current_index::9-bytes,
     last_index::9-bytes,bundle_hash::81-bytes, trunk::81-bytes,
@@ -146,7 +146,7 @@ defmodule Core.Utils.Converter do
     # - Put transaction line in map.
     Transaction.create(signature, address,value, obsolete_tag,timestamp,
       current_index,last_index,bundle_hash,trunk,branch,tag,atime,
-      alower,aupper,nonce,hash)
+      alower,aupper,nonce,hash,snapshot_index)
   end
 
 end
