@@ -11,8 +11,8 @@ defmodule ExtendedApi.Worker.FindTransactions.Tags.EdgeFn do
   @doc """
    This function handle the edge row.
   """
-  @spec creates_hint(binary, list, list) :: map
-  def creates_hint(tag, [el: el], acc) do
+  @spec create_hint(binary, list, list) :: map
+  def create_hint(tag, [el: el], acc) do
     # create hint map
     %{year: year, month: month} = DateTime.from_unix!(el)
     # there is possibility for one hint only per tag.

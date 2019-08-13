@@ -410,7 +410,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Hints do
     # first we fetch the query state from the state using the qf key.
     query_state = Map.get(state, qf)
     # now we decode the buffer using the query_state.
-    case Protocol.decode_full(buffer,query_state) do
+    case Protocol.decode_end(buffer,query_state) do
       # this indicates the transaction_hashes for tag hint
       # state[qf][:hint] are ready.
       {%Compute{result: hashes}, %{hint: hint} = query_state} ->
