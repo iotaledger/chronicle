@@ -1,4 +1,4 @@
-defmodule Broker.Collector.Validator do
+defmodule Broker.Collector.TransactionValidator do
 
   @max_demand Application.get_env(:broker, :__MAX_DEMAND__) || 64
   @min_demand Application.get_env(:broker, :__MIN_DEMAND__) || 0

@@ -7,23 +7,9 @@ defmodule Broker.Collector.TxCollector.Helper do
     - it creates a tx-object from the tx_trytes.
 
   """
-  @verify Application.get_env(:broker, :verify) || true
   alias Core.Utils.{Converter,Struct.Transaction}
 
-  if @verify do
-    @spec verify_hash(binary, binary) :: boolean
-    def verify_hash(_hash,_tx_trytes) do
-      # verifying logic for now we will put true
-      true
-    end
-  else
-    @spec verify_hash(binary, binary) :: boolean
-    def verify_hash(_hash,_tx_trytes) do
-      true
-    end
-  end
-
-  @spec create_tx_object(binary,binary) :: Transaction.t
+  @spec create_tx_object(binary,binary, nil | integer) :: Transaction.t
   def create_tx_object(hash, tx_trytes, snapshot_index \\ nil) do
     Converter.trytes_to_tx_object(hash, tx_trytes, snapshot_index)
   end

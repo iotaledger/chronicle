@@ -51,9 +51,11 @@ defmodule Broker.Collector.TxFeeder do
     case Helper.setup_feed_source(topic,
       Process.get(:host),Process.get(:port)) do
         {:ok, socket} ->
+          Logger.info("TxFeeder is ready, topic: #{topic}, host: #{Process.get(:host)}")
           send(self(), topic)
           {:noreply, socket}
         {:error, reason} ->
+          Logger.warn("could not setup a socket due to error: #{reason}")
           send(self(), :setup)
           {:noreply, socket_or_nil}
     end

@@ -32,8 +32,8 @@ defmodule Broker.Collector.TxCollector do
     {:consumer, %{}, subscribe_to: subscribe_to}
   end
 
-  def handle_subscribe(:producer, _options, from, state) do
-    Logger.info("TxCollector: #{Process.get(:name)} got subscribed_to TxValidator")
+  def handle_subscribe(:producer, _options, _from, state) do
+    Logger.info("TxCollector: #{Process.get(:name)} got subscribed_to Validator")
     {:automatic, state}
   end
 

@@ -32,7 +32,7 @@ defmodule Broker.Collector.SnCollector do
     {:consumer, %{}, subscribe_to: subscribe_to}
   end
 
-  def handle_subscribe(:producer, _options, from, state) do
+  def handle_subscribe(:producer, _options, _from, state) do
     Logger.info("SnCollector: #{Process.get(:name)} got subscribed_to Validator")
     {:automatic, state}
   end

@@ -26,7 +26,7 @@ defmodule Broker.Supervisor.Collector do
     tx_feeder_children =
       for {{host, port}, num} <- Enum.with_index(nodes) do
         # drop [nodes,name] as no longer needed and create new args
-        args = new_args++[host: host, port: port, num: num, nodes_num: length(nodes)]
+        args = new_args++[host: host, port: port, num: num]
         {Collector.TxFeeder, args}
       end
     transaction_partitions = args[:transaction_partitions]-1
@@ -37,7 +37,7 @@ defmodule Broker.Supervisor.Collector do
       ]
     children_2 =
       for num <- 0..transaction_partitions do
-        {Collector.Validator, [num: num]++new_args}
+        {Collector.TransactionValidator, [num: num]++new_args}
       end
     children_3 =
       for num <- 0..transaction_partitions do
@@ -47,7 +47,11 @@ defmodule Broker.Supervisor.Collector do
       for num <- 0..bundle_partitions  do
         {Collector.TxBundleCollector, [num: num]++new_args}
       end
-    tx_feeder_children++children_1++children_2++children_3++children_4
+    children_5 =
+      for num <- 0..bundle_partitions  do
+        {Collector.BundleValidator, [num: num]++new_args}
+      end
+    tx_feeder_children++children_1++children_2++children_3++children_4++children_5
   end
 
   defp get_children_by_topic(:sn_trytes,args) do
@@ -58,7 +62,7 @@ defmodule Broker.Supervisor.Collector do
     sn_feeder_children =
       for {{host, port}, num} <- Enum.with_index(nodes) do
         # drop [nodes,name] as no longer needed and create new args
-        args = new_args++[host: host, port: port, num: num, nodes_num: length(nodes)]
+        args = new_args++[host: host, port: port, num: num]
         {Collector.SnFeeder, args}
       end
     transaction_partitions = args[:transaction_partitions]-1
@@ -69,7 +73,7 @@ defmodule Broker.Supervisor.Collector do
       ]
     children_2 =
       for num <- 0..transaction_partitions do
-        {Collector.Validator, [num: num]++new_args}
+        {Collector.TransactionValidator, [num: num]++new_args}
       end
     children_3 =
       for num <- 0..transaction_partitions do
@@ -79,7 +83,11 @@ defmodule Broker.Supervisor.Collector do
       for num <- 0..bundle_partitions  do
         {Collector.SnBundleCollector, [num: num]++new_args}
       end
-    sn_feeder_children++children_1++children_2++children_3++children_4
+    children_5 =
+      for num <- 0..bundle_partitions  do
+        {Collector.BundleValidator, [num: num]++new_args}
+      end
+    sn_feeder_children++children_1++children_2++children_3++children_4++children_5
   end
 
 end
