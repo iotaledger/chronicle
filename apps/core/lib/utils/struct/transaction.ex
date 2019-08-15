@@ -14,6 +14,7 @@ defmodule Core.Utils.Struct.Transaction do
     :bundle,
     :value,
     :hash,
+    :trytes,
     :trunk,
     :branch,
     :nonce,
@@ -37,12 +38,13 @@ defmodule Core.Utils.Struct.Transaction do
    attachment_timestamp_upper: int_or_bin,  # integer type
    nonce: binary,
    hash: binary,
+   trytes: binary,
    snapshot_index: integer  }
 
 
   def create(signature, address,value, obsolete_tag,timestamp,
     current_index,last_index,bundle_hash,trunk,branch,tag,atime,
-    alower,aupper,nonce,hash,snapshot_index \\ nil) do
+    alower,aupper,nonce,hash,snapshot_index \\ nil,trytes \\ nil) do
     %__MODULE__{signature_or_message: signature,
      address: address,
      value: value,  # integer type
@@ -59,6 +61,7 @@ defmodule Core.Utils.Struct.Transaction do
      attachment_timestamp_upper: aupper,  # integer type
      nonce: nonce,
      hash: hash,
+     trytes: trytes,
      snapshot_index: snapshot_index  # nil or integer type
      }
   end

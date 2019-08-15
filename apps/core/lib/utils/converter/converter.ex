@@ -146,7 +146,7 @@ defmodule Core.Utils.Converter do
     # - Put transaction line in map.
     Transaction.create(signature, address,value, obsolete_tag,timestamp,
       current_index,last_index,bundle_hash,trunk,branch,tag,atime,
-      alower,aupper,nonce,hash,snapshot_index)
+      alower,aupper,nonce,hash,snapshot_index,trytes)
   end
 
 end
