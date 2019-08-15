@@ -65,16 +65,6 @@ defmodule Broker.Collector.Inserter do
     end
   end
 
-  def handle_info(:check, state) do
-    size = map_size(state)
-    if size > 1 do
-      Process.send_after(self(), :check, 10000)
-      {:noreply, state}
-    else
-      {:stop, :normal, state}
-    end
-  end
-
   @doc """
     Handler function which validate if query request
     has ended in the shard's socket tcp_window.
@@ -87,8 +77,18 @@ defmodule Broker.Collector.Inserter do
     This match unsuccessful send requests.
     # TODO: retry logic, (retry to re-insert the whole bundle)
   """
-  def handle_cast({:send?, _, status}, %{from: from} = state) do
+  def handle_cast({:send?, _, _}, state) do
     {:stop, :normal, state}
+  end
+  
+  def handle_info(:check, state) do
+    size = map_size(state)
+    if size > 1 do
+      Process.send_after(self(), :check, 10000)
+      {:noreply, state}
+    else
+      {:stop, :normal, state}
+    end
   end
 
   def logged(query) do

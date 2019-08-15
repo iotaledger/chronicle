@@ -7,6 +7,7 @@ defmodule Broker.Application do
 
   def start(_type, _args) do
     Logger.info("Starting broker app")
+    Process.sleep(10000)
     # get otp_app name which is by :broker
     otp_app = Application.get_application(__MODULE__)
     # get the topics

@@ -32,7 +32,7 @@ defmodule Broker.Collector.TxBundleCollector do
   end
 
   @spec handle_demand(integer,tuple) :: tuple
-  def handle_demand(demand, state) do
+  def handle_demand(_, state) do
     {:noreply, [], state}
   end
 
@@ -55,7 +55,7 @@ defmodule Broker.Collector.TxBundleCollector do
   # handle new flow of head_transactions(new bundles)
   def handle_cast({:new, tx_object}, %{name: name} = state) do
       case tx_object do
-        %{last_index: 0, trytes: trytes} ->
+        %{last_index: 0} ->
           # process it now as it's a complete bundle.
           # dispatch it to bundleValidator
           # create bundle with length = 1
@@ -81,7 +81,7 @@ defmodule Broker.Collector.TxBundleCollector do
   def handle_cast({ref_id, tx_object}, %{name: name} = state) do
     # ref_id is the head hash, first we fetch the ref_id state
       case Map.get(state, ref_id) do
-        [recent_object |_] = bundle ->
+        bundle when is_list(bundle) ->
           new_ref_id_state = [tx_object | bundle]
           # fetch the required info from tx_object
           %{trunk: trunk, current_index: cx, last_index: lx, hash: hash} = tx_object
