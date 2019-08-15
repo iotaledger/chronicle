@@ -51,10 +51,9 @@ defmodule Core.Supervisor.Cluster.Manager do
     {:noreply, state}
   end
 
-  @doc """
-    this private function which takes nodes list and otp_app
-    with thier arguments.
-  """
+
+  # this private function which takes nodes list and otp_app
+  # with thier arguments.
   @spec start_children(list, atom, list) :: list
   defp start_children(nodes, otp_app, args) when is_list(nodes) do
     for {address, port} <- nodes do
@@ -62,18 +61,15 @@ defmodule Core.Supervisor.Cluster.Manager do
     end
   end
 
-  @doc """
-    this private function which act as an error handler.
-  """
+
+  # this private function which act as an error handler.
   @spec start_children(term, term, term) :: nil
   defp start_children(_, _, _) do
     nil
   end
 
-  @doc """
-    this private function which invoke the DynamicCluster
-    supervisor to start a given node.
-  """
+  # this private function which invoke the DynamicCluster
+  # supervisor to start a given node.
   @spec start_node_child(list, integer, atom, list) :: tuple
   defp start_node_child(address, port, otp_app, args) do
     args = [ [{:address, address}, {:port, port} | args] ]

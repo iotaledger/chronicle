@@ -4,9 +4,11 @@ defmodule Core.Application do
   @moduledoc false
 
   alias OverDB.{Ring.Monitor, Engine.Preparer}
+  require Logger
   use Application
 
   def start(_type, _args) do
+    Logger.info("Starting core app")
     otp_app = Application.get_application(__MODULE__)
     {dc, _} = Application.get_env(:over_db, otp_app)[:__DATA_CENTERS__] |> hd()
     dc1_args = [otp_app: :core, data_center: dc]
