@@ -2,7 +2,7 @@ defmodule Nifs do
   @on_load :init
 
   def init do
-    :ok = :erlang.load_nif(Application.app_dir(:broker) <> "/priv/nifs2", 0)
+    :ok = :erlang.load_nif(Application.app_dir(:broker) <> "/priv/nifs", 0)
   end
 
   def curl_p_init() do
