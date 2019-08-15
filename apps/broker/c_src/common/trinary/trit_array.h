@@ -14,7 +14,7 @@ extern "C" {
 
 #include <stdbool.h>
 #include <string.h>
-#include "../../common/trinary/flex_trit.h"
+#include "common/trinary/flex_trit.h"
 
 /// A trit array represents an array of trits packed according to the
 /// current memory model.

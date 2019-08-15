@@ -14,7 +14,7 @@ extern "C" {
 
 #include <assert.h>
 
-#include "../../common/trinary/flex_trit.h"
+#include "common/trinary/flex_trit.h"
 #include "utarray.h"
 
 #define NUM_TRITS_SERIALIZED_TRANSACTION 8019

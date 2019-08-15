@@ -8,9 +8,9 @@
 #ifndef __COMMON_TRINARY_TRIT_TRYTE_H_
 #define __COMMON_TRINARY_TRIT_TRYTE_H_
 
-#include "../../common/defs.h"
-#include "../../common/trinary/trits.h"
-#include "../../common/trinary/tryte.h"
+#include "common/defs.h"
+#include "common/trinary/trits.h"
+#include "common/trinary/tryte.h"
 
 #ifdef __cplusplus
 extern "C" {

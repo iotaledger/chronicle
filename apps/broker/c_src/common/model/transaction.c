@@ -12,9 +12,9 @@
 #include <stdio.h>
 #endif
 
-#include "../../common/crypto/curl-p/digest.h"
-#include "../../common/model/transaction.h"
-#include "../../common/trinary/trit_long.h"
+#include "common/crypto/curl-p/digest.h"
+#include "common/model/transaction.h"
+#include "common/trinary/trit_long.h"
 
 /***********************************************************************************************************
  * Transaction

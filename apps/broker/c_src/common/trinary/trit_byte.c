@@ -8,8 +8,8 @@
 #include <assert.h>
 #include <string.h>
 
-#include "../../common/trinary/trit_byte.h"
-#include "../../utils/macros.h"
+#include "common/trinary/trit_byte.h"
+#include "utils/macros.h"
 
 // Since the LUT can be quite heavy for little devices, it is possible to
 // disable it and recompute values at runtime

@@ -8,7 +8,7 @@
 #ifndef __DIGEST_H
 #define __DIGEST_H
 
-#include "trit.h"
+#include "common/crypto/curl-p/trit.h"
 
 #ifdef __cplusplus
 extern "C" {

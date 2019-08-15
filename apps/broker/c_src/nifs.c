@@ -3,6 +3,7 @@
 #include "common/crypto/curl-p/ptrit.h" // ptrit_curl impl
 #include "common/trinary/trit_ptrit.h" // trits <-> ptrits conversion
 #include "common/trinary/trit_tryte.h" // trits <-> trytes conversion
+#include "common/model/bundle.h" // bundle header
 #include <string.h>
 
 #define DEBUG 3
@@ -217,11 +218,62 @@ get_trytes_and_cmp_hashes(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
 }
 
 
+static ERL_NIF_TERM
+validate_bundle(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])
+{
+    retcode_t res = RC_OK;
+    int tx_count; // tx_count of the chunk
+    bundle_transactions_t *bundle = NULL; // bundle var
+    bundle_status_t bundle_status = BUNDLE_NOT_INITIALIZED;
+    ErlNifBinary in; // in.data(trytes) of the chunk
+    if(argc != 2)
+    {
+        return enif_make_badarg(env);
+    }
+    // get tx_count of the chunk
+    if(!enif_get_int(env, argv[0], &tx_count))
+    {
+       return enif_make_badarg(env);
+    }
+
+    // get bundle_trytes line
+    if(!enif_inspect_binary(env, argv[1], &in))
+      return enif_make_badarg(env);
+    // get bundle_trytes
+    tryte_t const *bundle_trytes = (tryte_t const *)in.data;
+      bundle_transactions_new(&bundle);
+    for(int tx_index = 0; tx_index < tx_count; ++tx_index, bundle_trytes += 2673)
+    {
+          
+      flex_trit_t trits[FLEX_TRIT_SIZE_8019];
+  flex_trits_from_trytes(trits, NUM_TRITS_SERIALIZED_TRANSACTION, (tryte_t *)bundle_trytes, NUM_TRITS_SERIALIZED_TRANSACTION,
+    NUM_TRYTES_SERIALIZED_TRANSACTION);
+      iota_transaction_t *tx = transaction_deserialize(trits, false); 
+     
+      bundle_transactions_add(bundle,tx); // add tx into bundle
+
+      transaction_free(tx); // free transaction
+
+    }
+
+	//validate bundle
+    if ((res = bundle_validate(bundle, &bundle_status)) == RC_OK && bundle_status == BUNDLE_VALID) {
+      bundle_transactions_free(&bundle); // free bundle
+      return atom_true;
+    } else {
+      bundle_transactions_free(&bundle); // free bundle
+      return atom_false;
+}
+	
+}
+
+
 static ErlNifFunc nif_funcs[] = {
     {"curl_p_init", 0, curl_p_81_init_nif},
     {"absorb", 1, absorb},
     {"squeeze", 1, squeeze},
     {"add_trytes", 3, add_trytes},
+    {"validate_bundle",2, validate_bundle},
     {"get_status", 3, get_trytes_and_cmp_hashes}
 };
 

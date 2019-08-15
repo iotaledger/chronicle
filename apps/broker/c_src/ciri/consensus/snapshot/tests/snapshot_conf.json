@@ -1,0 +1,15 @@
+{
+  "coordinator": {
+    "depth": 20,
+    "lastMilestone": 774804,
+    "pubkey": "KPWCHICGJZXKE9GSUDXZYUAPLHAKAHYHDXNPHENTERYMMBQOPSQIDENXKLKCEYCPVTZQLEEJVYJZV9BWU",
+    "securityLevel": 1,
+    "signatureType": "CURL_P27"
+  },
+  "signature": {
+    "depth": 6,
+    "index": 9,
+    "pubkey": "TTXJUGKTNPOOEXSTQVVACENJOQUROXYKDRCVK9LHUXILCLABLGJTIPNF9REWHOIMEUKWQLUOKD9CZUYAC"
+  },
+  "timestamp": 1537203600
+}

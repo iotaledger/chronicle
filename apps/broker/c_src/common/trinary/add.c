@@ -5,7 +5,7 @@
  * Refer to the LICENSE file for licensing information
  */
 
-#include "../../common/trinary/add.h"
+#include "common/trinary/add.h"
 
 struct ha_o {
   trit_t s;

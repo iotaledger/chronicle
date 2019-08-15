@@ -7,10 +7,10 @@
 
 #include <stdio.h>
 
-#include "hamming.h"
-#include "ptrit.h"
-#include "search.h"
-#include "trit.h"
+#include "common/crypto/curl-p/hamming.h"
+#include "common/crypto/curl-p/ptrit.h"
+#include "common/crypto/curl-p/search.h"
+#include "common/crypto/curl-p/trit.h"
 
 short test(PCurl *const curl, unsigned short const security) {
   unsigned short i, j, k;

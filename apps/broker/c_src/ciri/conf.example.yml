@@ -1,0 +1,48 @@
+# Please read https://github.com/iotaledger/entangled/tree/develop/ciri#configuration
+# To use this file, rename it to `conf.yml`, uncomment and change values if needed
+
+# cIRI configuration
+
+# log-level: info
+# spent-addresses-db-path: ciri/db/spent-addresses-mainnet.db
+# tangle-db-path: ciri/db/tangle-mainnet.db
+# tangle-db-revalidate: false
+
+# Node configuration
+
+# auto-tethering-enabled: false
+# max-neighbors: 5
+# mwm: 14
+# neighboring-address: "0.0.0.0"
+# neighboring-port: 15600
+# neighbors: "tcp://127.0.0.1:15600"
+# p-send-milestone: 0.02
+# recent-seen-bytes-cache-size: 1500
+# reconnect-attempt-interval: 60
+# requester-queue-size: 10000
+# tips-cache-size: 5000
+
+# API configuration
+
+# http-port: 14265
+# max-find-transactions: 100000
+# max-get-trytes: 10000
+
+# Consensus configuration
+
+# alpha: 0.001
+# below-max-depth: 20000
+# coordinator-address: "EQSAUZXULTTYZCLNJNTXQTQHOMOFZERHTCGTXOLTVAHKSA9OGAZDEKECURBRIXIJWNPFCQIOVFVVXJVD9"
+# coordinator-depth: 23
+# coordinator-security-level: 2
+# coordinator-signature-type: KERL
+# last-milestone: 1050000
+# max-depth: 15
+# snapshot-file: /absolute/path/to/snapshot/file
+# snapshot-signature-depth: 6
+# snapshot-signature-file: /absolute/path/to/snapshot/signature/file
+# snapshot-signature-index: 12
+# snapshot-signature-pubkey: "TTXJUGKTNPOOEXSTQVVACENJOQUROXYKDRCVK9LHUXILCLABLGJTIPNF9REWHOIMEUKWQLUOKD9CZUYAC"
+# snapshot-signature-skip-validation: false
+# snapshot-timestamp: 1554904800
+# spent-addresses-files: "/absolute/path/to/file0 /absolute/path/to/file1"

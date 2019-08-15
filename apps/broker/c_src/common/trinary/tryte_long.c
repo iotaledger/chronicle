@@ -7,8 +7,8 @@
 
 #include <math.h>
 
-#include "../../common/defs.h"
-#include "../../common/trinary/tryte_long.h"
+#include "common/defs.h"
+#include "common/trinary/tryte_long.h"
 
 size_t min_trytes(int64_t const value) {
   // Need minimum 1 tryte to represent any number

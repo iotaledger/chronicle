@@ -8,7 +8,7 @@
 #ifndef __COMMON_TRINARY_PTRIT_H_
 #define __COMMON_TRINARY_PTRIT_H_
 
-#include "../../common/stdint.h"
+#include "common/stdint.h"
 
 extern uint64_t const HIGH_BITS;
 extern uint64_t const LOW_BITS;

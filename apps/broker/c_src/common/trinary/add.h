@@ -8,7 +8,7 @@
 #ifndef __TRIT_ADD_H__
 #define __TRIT_ADD_H__
 
-#include "../../common/trinary/trits.h"
+#include "common/trinary/trits.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -8,7 +8,7 @@
 #ifndef __COMMON_TRINARY_TRYTE_LONG_H_
 #define __COMMON_TRINARY_TRYTE_LONG_H_
 
-#include "../../common/trinary/tryte.h"
+#include "common/trinary/tryte.h"
 
 #ifdef __cplusplus
 extern "C" {

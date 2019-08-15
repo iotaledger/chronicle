@@ -10,7 +10,7 @@
 
 #include <stdbool.h>
 
-#include "../../common/trinary/tryte.h"
+#include "common/trinary/tryte.h"
 
 #ifdef __cplusplus
 extern "C" {

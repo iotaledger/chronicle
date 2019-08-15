@@ -5,7 +5,7 @@
  * Refer to the LICENSE file for licensing information
  */
 
-#include "memset_safe.h"
+#include "utils/memset_safe.h"
 
 #define __STDC_WANT_LIB_EXT1__ 1
 #include <errno.h>

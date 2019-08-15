@@ -8,8 +8,8 @@
 #ifndef __COMMON_CRYPTO_SPONGE_SPONGE_H__
 #define __COMMON_CRYPTO_SPONGE_SPONGE_H__
 
-#include "../../../common/errors.h"
-#include "../../../common/trinary/flex_trit.h"
+#include "common/errors.h"
+#include "common/trinary/flex_trit.h"
 
 #ifdef __cplusplus
 extern "C" {

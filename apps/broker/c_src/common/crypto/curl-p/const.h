@@ -8,8 +8,8 @@
 #ifndef __COMMON_CURL_P_CONST_H
 #define __COMMON_CURL_P_CONST_H
 
-#include "../../../common/defs.h"
-#include "../../../common/trinary/trits.h"
+#include "common/defs.h"
+#include "common/trinary/trits.h"
 
 #define __TRUTH_TABLE 1, 0, -1, 2, 1, -1, 0, 2, -1, 1, 0
 #define STATE_LENGTH 3 * HASH_LENGTH_TRIT

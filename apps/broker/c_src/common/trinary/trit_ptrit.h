@@ -8,9 +8,9 @@
 #ifndef __COMMON_TRINARY_TRIT_PTRIT_H_
 #define __COMMON_TRINARY_TRIT_PTRIT_H_
 
-#include "../../common/stdint.h"
-#include "../../common/trinary/ptrit_incr.h"
-#include "../../common/trinary/trits.h"
+#include "common/stdint.h"
+#include "common/trinary/ptrit_incr.h"
+#include "common/trinary/trits.h"
 
 #ifdef __cplusplus
 extern "C" {

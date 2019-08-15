@@ -10,8 +10,8 @@
 
 #include <string.h>
 
-#include "../../../common/crypto/curl-p/const.h"
-#include "../../../common/trinary/trits.h"
+#include "common/crypto/curl-p/const.h"
+#include "common/trinary/trits.h"
 
 #ifdef __cplusplus
 extern "C" {

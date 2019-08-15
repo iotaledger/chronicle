@@ -7,9 +7,9 @@
 
 #include <stdio.h>
 
-#include "hashcash.h"
-#include "ptrit.h"
-#include "search.h"
+#include "common/crypto/curl-p/hashcash.h"
+#include "common/crypto/curl-p/ptrit.h"
+#include "common/crypto/curl-p/search.h"
 
 #ifdef _WIN32
 #define CTZLL(x) _tzcnt_u64(x)

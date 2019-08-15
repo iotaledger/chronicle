@@ -7,9 +7,9 @@
 
 #include <stdlib.h>
 
-#include "../../../common/crypto/curl-p/trit.h"
-#include "../../../common/crypto/kerl/kerl.h"
-#include "../../../common/crypto/sponge/sponge.h"
+#include "common/crypto/curl-p/trit.h"
+#include "common/crypto/kerl/kerl.h"
+#include "common/crypto/sponge/sponge.h"
 
 retcode_t sponge_init(sponge_t* const sponge, sponge_type_t const type) {
   if (sponge == NULL) {

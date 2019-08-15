@@ -5,7 +5,7 @@
  * Refer to the LICENSE file for licensing information
  */
 
-#include "../../common/trinary/flex_trit_array.h"
+#include "common/trinary/flex_trit_array.h"
 #include <cassert>
 
 namespace iota {

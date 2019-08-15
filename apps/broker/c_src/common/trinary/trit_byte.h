@@ -8,9 +8,9 @@
 #ifndef __COMMON_TRINARY_TRIT_BYTE_H__
 #define __COMMON_TRINARY_TRIT_BYTE_H__
 
-#include "../../common/defs.h"
-#include "../../common/trinary/bytes.h"
-#include "../../common/trinary/trits.h"
+#include "common/defs.h"
+#include "common/trinary/bytes.h"
+#include "common/trinary/trits.h"
 
 #ifdef __cplusplus
 extern "C" {

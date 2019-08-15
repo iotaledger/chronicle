@@ -5,7 +5,7 @@
  * Refer to the LICENSE file for licensing information
  */
 
-#include "../../common/trinary/trit_array.h"
+#include "common/trinary/trit_array.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>

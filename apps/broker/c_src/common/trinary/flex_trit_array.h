@@ -10,7 +10,7 @@
 
 #include <cstdint>
 #include <vector>
-#include "../../common/trinary/flex_trit.h"
+#include "common/trinary/flex_trit.h"
 
 namespace iota {
 namespace trinary {

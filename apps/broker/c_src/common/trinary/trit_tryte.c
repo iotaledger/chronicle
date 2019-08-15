@@ -7,7 +7,7 @@
 
 #include <string.h>
 
-#include "../../common/trinary/trit_tryte.h"
+#include "common/trinary/trit_tryte.h"
 
 static const trit_t TRYTES_TRITS_LUT[TRYTE_SPACE_SIZE][NUMBER_OF_TRITS_IN_A_TRYTE] = {
     {0, 0, 0},  {1, 0, 0},  {-1, 1, 0},  {0, 1, 0},  {1, 1, 0},  {-1, -1, 1},  {0, -1, 1},  {1, -1, 1},  {-1, 0, 1},

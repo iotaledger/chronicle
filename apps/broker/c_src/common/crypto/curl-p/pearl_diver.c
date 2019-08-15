@@ -9,13 +9,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ptrit.h"
-#include "search.h"
-#include "../../../common/trinary/ptrit_incr.h"
-#include "../../../common/trinary/trit_ptrit.h"
-#include "../../../utils/handles/rw_lock.h"
-#include "../../../utils/handles/thread.h"
-#include "../../../utils/system.h"
+#include "common/crypto/curl-p/ptrit.h"
+#include "common/crypto/curl-p/search.h"
+#include "common/trinary/ptrit_incr.h"
+#include "common/trinary/trit_ptrit.h"
+#include "utils/handles/rw_lock.h"
+#include "utils/handles/thread.h"
+#include "utils/system.h"
 
 typedef enum { SEARCH_RUNNING, SEARCH_INTERRUPT, SEARCH_FINISHED } SearchStatus;
 

@@ -8,7 +8,7 @@
 #ifndef __COMMON_MODEL_TESTS_DEFS_H__
 #define __COMMON_MODEL_TESTS_DEFS_H__
 
-#include "../../../common/model/transaction.h"
+#include "common/model/transaction.h"
 
 static int64_t const TEST_VALUE = 123456;
 static uint64_t const TEST_TIMESTAMP = 1477037811737;

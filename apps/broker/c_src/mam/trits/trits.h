@@ -22,8 +22,8 @@
 
 #include <string.h>
 
-#include "../../common/errors.h"
-#include "../../mam/defs.h"
+#include "common/errors.h"
+#include "mam/defs.h"
 
 #ifdef __cplusplus
 extern "C" {
