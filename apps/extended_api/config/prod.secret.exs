@@ -10,7 +10,7 @@ secret_key_base =
     raise """
     environment variable SECRET_KEY_BASE is missing.
     You can generate one by calling: mix phx.gen.secret
-    """
+    """    
 
 config :extended_api, ExtendedApiWeb.Endpoint,
   http: [:inet6, port: String.to_integer(System.get_env("PORT") || "4000")],

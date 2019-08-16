@@ -49,4 +49,9 @@ defmodule ExtendedApiWeb.ErrorView do
   def render("timeout.json", _) do
     %{error: "timeout"}
   end
+
+  @spec render(binary, map) :: Plug.Conn.t
+  def render("404.json", _) do
+    %{error: "404"}
+  end
 end
