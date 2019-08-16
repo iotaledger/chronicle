@@ -14,7 +14,7 @@ config :broker,
   __TOPICS__: [
     tx_trytes: [
       # add the zmq nodes urls to listen to tx_trytes(unconfirmed transactions) topic
-      {'perma-1.iota.partners',5556}, {'zmq.iota.org',5556}
+      {'zmq.iota.org',5556}
     ],
     sn_trytes: [
       # add the zmq nodes urls to listen to sn_trytes(confirmed transactions) topic
@@ -23,8 +23,8 @@ config :broker,
   __MAX_DEMAND__: 64,
   __TX_TTL__: 10000, # Time to live ms (10 seconds)
   __BUNDLE_TTL__: 10000, # ms (10 seconds)
-  __TRANSACTION_PARTITIONS_PER_TOPIC__: 1, # concurrent transactions validators per topic(tx_trytes, sn_trytes)
-  __BUNDLE_PARTITIONS_PER_TOPIC__: 1 #
+  __TRANSACTION_PARTITIONS_PER_TOPIC__: 2, # concurrent transactions validators/collector per topic(tx_trytes, sn_trytes)
+  __BUNDLE_PARTITIONS_PER_TOPIC__: 2 # concurrent bundle validators/collectors per topic(tx_trytes, sn_trytes)
 
 #
 # and access this configuration in your application as:

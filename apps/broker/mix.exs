@@ -24,8 +24,6 @@ defmodule Broker.MixProject do
       deps_path: "../../deps",
       lockfile: "../../mix.lock",
       elixir: "~> 1.8",
-      make_executable: "make",
-      make_makefile: "Makefile",
       start_permanent: Mix.env() == :prod,
       compilers: [:broker] ++ Mix.compilers,
       deps: deps()
