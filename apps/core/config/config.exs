@@ -27,16 +27,15 @@ config :over_db, :core,
   __PASSWORD__: "password", # CQL password for auth
   __DATA_CENTERS__: [
     dc1: [
-      {'127.0.0.1', 9042},
+      # here you have to add scyllaDb nodes IPs
+      {'127.0.0.1', 9042}
     ],
   ],
   __RING__: :core_ring,
   __RECEIVER_PRIORITY__: :normal,
-  __REPORTERS_PER_SHARD__: 1,
-  __CONNS_PER_SHARD__: 1,
-  __LOGGED_PER_SHARD__: 1,
-  __UNLOGGED_PER_SHARD__: 1,
-  __COUNTER_PER_SHARD__: 1
+  __REPORTERS_PER_SHARD__: 4,
+  __CONNS_PER_SHARD__: 2,
+  __LOGGED_PER_SHARD__: 2
 ##########################################################
 # It is also possible to import configuration files, relative to this
 # directory. For example, you can emulate configuration per environment

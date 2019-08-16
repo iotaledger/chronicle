@@ -15,6 +15,6 @@ defmodule Chronicle.MixProject do
   #
   # Run "mix help deps" for examples and options.
   defp deps do
-    []
+    [{:flow, "~> 0.14.3"}]
   end
 end
