@@ -12,7 +12,7 @@ defmodule Broker.Collector.Ring do
   @spec sn_collector?(binary) :: atom
   def sn_collector?(hash) do
     :erlang.phash2(hash, @tx_partitions)
-    |> lookup_tx_collector()
+    |> lookup_sn_collector()
   end
   @spec tx_bundle_collector?(binary) :: atom
   def tx_bundle_collector?(hash) do

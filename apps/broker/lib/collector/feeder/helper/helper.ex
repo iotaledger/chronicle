@@ -23,6 +23,10 @@ defmodule Broker.Collector.Feeder.Helper do
   defp create_zmq_socket_and_subscribe(:tx_trytes) do
     create_zmq_socket_and_subscribe("tx_trytes")
   end
+  @spec create_zmq_socket_and_subscribe(atom) :: pid
+  defp create_zmq_socket_and_subscribe(:sn_trytes) do
+    create_zmq_socket_and_subscribe("sn_trytes")
+  end
 
   # create socket pid and subscribe to a topic.
   # it returns :ok.

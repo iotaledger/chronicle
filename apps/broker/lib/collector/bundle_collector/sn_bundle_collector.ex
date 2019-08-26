@@ -43,7 +43,7 @@ defmodule Broker.Collector.SnBundleCollector do
         # we check with the head
         [%{current_index: ^current_index} |_] ->
           # drop bundle because its not active.
-          Logger.warn("Wasn't able to collect bundle: #{hash}")
+          Logger.warn("Wasn't able to collect sn_bundle: #{hash}")
           Map.delete(state, hash)
         _nil_or_tx_object_with_updated_current_index ->
           # return state

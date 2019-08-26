@@ -16,13 +16,7 @@ defmodule Broker.Collector.Distributor do
 
   @spec start_link(Keyword.t) :: tuple
   def start_link(args) do
-    name =
-      case args[:topic] do
-        :tx_trytes ->
-          :tx_distributor
-        :sn_trytes ->
-          :sn_distributor
-      end
+    name = name_by_topic(args)
     GenStage.start_link(__MODULE__, [name: name]++args, name: name)
   end
 
@@ -73,4 +67,22 @@ defmodule Broker.Collector.Distributor do
     {:noreply, [], %{state | queue: queue}}
   end
 
+  defp name_by_topic(args) do
+    case args[:topic] do
+      :tx_trytes ->
+        :tx_distributor
+      :sn_trytes ->
+        :sn_distributor
+    end
+  end
+
+  def child_spec(args) do
+    %{
+      id: name_by_topic(args),
+      start: {__MODULE__, :start_link, [args]},
+      type: :worker,
+      restart: :permanent,
+      shutdown: 500
+    }
+  end
 end

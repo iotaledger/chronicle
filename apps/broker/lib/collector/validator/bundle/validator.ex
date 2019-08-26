@@ -39,9 +39,6 @@ defmodule Broker.Collector.BundleValidator do
     if Nifs.validate_bundle(bundle_length, bundle_trytes) do
       # insert bundle by spawn genserver inserter
       Inserter.start_link(bundle)
-    else
-      IO.inspect(bundle_length)
-      IO.inspect("not valid")
     end
   end
 

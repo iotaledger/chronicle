@@ -23,7 +23,7 @@ defmodule Broker.Collector.TransactionValidator do
       dispatcher: {GenStage.PartitionDispatcher, partitions: partitions,
         hash: dispatch_fn},
       # this option to subscribe to Validator producer(distributor)
-      subscribe_to: [{:tx_distributor, max_demand: @max_demand, min_demand: @min_demand}]
+      subscribe_to: [{dis_name_by_topic?(args), max_demand: @max_demand, min_demand: @min_demand}]
     ]
     {:producer_consumer, %{producer: nil}, opts}
   end
@@ -270,5 +270,13 @@ defmodule Broker.Collector.TransactionValidator do
         :"sv#{args[:num]}"
     end
   end
-
+  # generate the distributor name by topic name
+  defp dis_name_by_topic?(args) do
+    case args[:topic] do
+      :tx_trytes ->
+        :tx_distributor
+      :sn_trytes ->
+        :sn_distributor
+    end
+  end
 end
