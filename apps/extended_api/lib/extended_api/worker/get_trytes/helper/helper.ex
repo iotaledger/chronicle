@@ -6,6 +6,7 @@ defmodule ExtendedApi.Worker.GetTrytes.Helper do
     row compute modules(bundle_fn.ex, edge_fn.ex)
   """
   alias ExtendedApi.Worker.{GetTrytes, GetTrytes.BundleFn, GetTrytes.EdgeFn}
+  alias ExtendedApi.Worker.GetTrytes.Helper
   alias Core.DataModel.{Keyspace.Tangle, Table.Bundle, Table.Edge}
   import OverDB.Builder.Query
 
@@ -84,7 +85,7 @@ defmodule ExtendedApi.Worker.GetTrytes.Helper do
   """
   @spec bundle_query_from_opts_acc(map,map) :: tuple
   def bundle_query_from_opts_acc(%{function: {_, _, args}} = opts, acc) do
-    apply(Helper, :bundle_query, args ++ [opts,acc])
+    apply(ExtendedApi.Worker.GetTrytes.Helper, :bundle_query, args ++ [opts,acc])
   end
 
 end

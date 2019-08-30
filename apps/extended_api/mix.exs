@@ -23,7 +23,7 @@ defmodule ExtendedApi.MixProject do
   def application do
     [
       mod: {ExtendedApi.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools,:broker]
     ]
   end
 
