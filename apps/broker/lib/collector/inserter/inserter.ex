@@ -4,6 +4,7 @@ defmodule Broker.Collector.Inserter do
   use OverDB.Worker,
     executor: Core.Executor
   alias Broker.Collector.Inserter.Helper
+  require Logger
   @doc """
     starting bundle inserter
   """
@@ -49,17 +50,29 @@ defmodule Broker.Collector.Inserter do
 
   @spec handle_cast(tuple, map) :: tuple
   def handle_cast({:full, qf, buffer}, state) do
+    query_state = state[qf]
     # first we fetch the query state from the state using the qf key.
-    case Protocol.decode_full(buffer, state[qf]) do
+    case Protocol.decode_full(buffer, query_state) do
       :void when map_size(state) == 2 ->
         # we stop the worker as no further responses are expected.
         {:stop,:normal, Map.delete(state, qf)}
       :void ->
         # we proceed(noreply) the worker.
         {:noreply, Map.delete(state, qf)}
+      %Error{reason: :unprepared} ->
+        # retry the query which faild to get inserted due to unprepared statement
+        # first we fetch the cql statement from the query_state
+        %{query: %{cql: cql} = query} = query_state
+        Logger.warn("retrying: #{qf}, query: #{inspect query}")
+        # delete cql from the cache
+        FastGlobal.delete(cql)
+        # resend the query(logged)
+        {:ok, _, _} = logged(query)
+        # we return state as it's because we are retrying again.
+        {:noreply, state}
       err? ->
-        # TODO: retry logic for the whole bundle.
-        # (we stop/kill the worker to make the supervisor restart it)
+        # those errors are likely due to write-timeout or scylladb related errors
+        # TODO: handle them somehow.
         IO.inspect(err?)
         {:noreply, state}
     end
@@ -80,7 +93,7 @@ defmodule Broker.Collector.Inserter do
   def handle_cast({:send?, _, _}, state) do
     {:stop, :normal, state}
   end
-  
+
   def handle_info(:check, state) do
     size = map_size(state)
     if size > 1 do

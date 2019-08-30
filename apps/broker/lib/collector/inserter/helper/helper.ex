@@ -98,6 +98,7 @@ defmodule Broker.Collector.Inserter.Helper do
       {:varint, lx}])
     |> pk([bh: bh])
     |> prepare?(true)
+    |> assign_query()
     |> Inserter.logged()
   end
 
@@ -127,6 +128,7 @@ defmodule Broker.Collector.Inserter.Helper do
       {:varint, attachment_timestamp_upper}])
     |> pk([bh: bh])
     |> prepare?(true)
+    |> assign_query()
     |> Inserter.logged()
   end
 
@@ -155,6 +157,7 @@ defmodule Broker.Collector.Inserter.Helper do
       {:varint, attachment_timestamp_upper}])
     |> pk([bh: bh])
     |> prepare?(true)
+    |> assign_query()
     |> Inserter.logged()
   end
 
@@ -177,6 +180,7 @@ defmodule Broker.Collector.Inserter.Helper do
         {:varint, lx}])
       |> pk([v1: v1, yy: yy, mm: mm])
       |> prepare?(true)
+      |> assign_query()
       |> Inserter.logged()
     [{qf, qs}]
   end
@@ -196,6 +200,7 @@ defmodule Broker.Collector.Inserter.Helper do
       {:varint, ts}]) # NOTE timestamp as extralabel el.
     |> pk([v1: v1])
     |> prepare?(true)
+    |> assign_query()
     |> Inserter.logged()
   end
 
@@ -213,6 +218,7 @@ defmodule Broker.Collector.Inserter.Helper do
       {:varint, lx}])
     |> pk([v1: v1])
     |> prepare?(true)
+    |> assign_query()
     |> Inserter.logged()
   end
 
@@ -230,6 +236,7 @@ defmodule Broker.Collector.Inserter.Helper do
       {:varint, lx}])
     |> pk([v1: v1])
     |> prepare?(true)
+    |> assign_query()
     |> Inserter.logged()
   end
 
@@ -248,6 +255,7 @@ defmodule Broker.Collector.Inserter.Helper do
       {:varint, sx}])
     |> pk([v1: v1])
     |> prepare?(true)
+    |> assign_query()
     |> Inserter.logged()
   end
 
@@ -263,6 +271,7 @@ defmodule Broker.Collector.Inserter.Helper do
         {:varint, ix}])
       |> pk([v1: v1])
       |> prepare?(true)
+      |> assign_query()
       |> Inserter.logged()
     {qf,qs}
   end
@@ -276,6 +285,7 @@ defmodule Broker.Collector.Inserter.Helper do
         {:varint, ts}]) # NOTE timestamp as extralabel el.
       |> pk([v1: v1])
       |> prepare?(true)
+      |> assign_query()
       |> Inserter.logged()
     {qf,qs}
   end
@@ -296,8 +306,14 @@ defmodule Broker.Collector.Inserter.Helper do
       {:blob, th}])
     |> pk([p0: p0,p1: p1,yy: yy,mm: mm])
     |> prepare?(true)
+    |> assign_query()
     |> Inserter.logged()
     {qf,qs}
+  end
+
+  # this assign a query to the query in order to enable us for retry logic.
+  defp assign_query(query) do
+    assign(query,query: query)
   end
 
   defp address_label?(value) when value >= 0 do
