@@ -14,9 +14,8 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees.Helper do
 
   @initial_acc %{hashes: [], queries_states: []}
   @max_bigint 9223372036854775807 # will be used to generate random qf.
-  @edge_cql "SELECT v2,ts,ex,ix,lx FROM tangle.edge WHERE v1 = ? AND lb = 50"
-  @last_tx_bundle_cql "SELECT b FROM tangle.bundle WHERE bh = ? AND lb = 30 AND ts = ? AND ix = ? AND id = ?"
-  @bundle_cql "SELECT e FROM tangle.bundle WHERE bh = ? AND lb = 30 AND ix < ? AND id = ? ALLOW FILTERING"
+  @edge_cql "SELECT v2,lb,ts,ex,ix,lx FROM tangle.edge WHERE v1 = ? AND lb IN (50,51)"
+  @point_tx_bundle_cql "SELECT b FROM tangle.bundle WHERE bh = ? AND lb = 30 AND ts = ? AND ix = ? AND id = ?"
   # Start of Helper functions for edge table queries ###########################
 
   @doc """
@@ -77,7 +76,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees.Helper do
     {Tangle, Edge}
     # v2 hold bundle_hash,ts is timestamp, ex hold attachmentID which is the headHash(index=0)
     # ix hold 0(trunk) or 1(branch), lx is last_index.
-    |> select([:v2,:ts,:ex,:ix,:lx]) |> type(:stream)
+    |> select([:v2,:lb,:ts,:ex,:ix,:lx]) |> type(:stream)
     |> assign(approve: approve, acc: @initial_acc)
     |> cql(@edge_cql)
     |> values([{:blob, approve}])
@@ -86,54 +85,18 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees.Helper do
     |> Approvees.query()
   end
 
-  @spec bundle_query(integer, integer, binary,binary,integer,integer,map) :: tuple
-  def bundle_query(ix,lx,bh,id,ts,ref \\ :rand.uniform(@max_bigint), opts \\ nil)
-  @doc """
-    This function generates bundle_query for tip0(when approve is trunk = 0)
-    it uses the follow cql:
-    "SELECT b FROM tangle.bundle WHERE bh = ? AND lb = 30 AND ts = ? AND ix = ? AND id = ?"
-    b column hold the hash of transaction(currentIndex=lastIndex),
-    with attachmentID id, and current_index less_than(!=) last_index.
-  """
-  #
-  def bundle_query(1,lx,bh,id,ts,ref,opts) do
+  @spec bundle_query(integer, binary,binary,integer,integer,map) :: tuple
+  def bundle_query(ix,bh,id,ts,ref \\ :rand.uniform(@max_bigint), opts \\ nil)
+
+  def bundle_query(ix,bh,id,ts,ref,opts) do
     {Tangle, Bundle}
     |> select([:b]) |> type(:stream)
-    |> assign(bh: bh, ix: 1, lx: lx, id: id, ts: ts)
-    |> cql(@last_tx_bundle_cql)
-    |> values([{:blob,bh},{:varint,ts},{:blob,lx},{:blob,id}])
+    |> assign(bh: bh, ix: ix, id: id, ts: ts)
+    |> cql(@point_tx_bundle_cql)
+    |> values([{:blob,bh},{:varint,ts},{:blob,ix},{:blob,id}])
     |> opts(opts || %{function: {BundleFn, :get_hash}})
     |> pk([bh: bh]) |> prepare?(true) |> reference({:bundle, ref})
     |> Approvees.query()
   end
 
-
-  @doc """
-    This function generates bundle_query for tip0(when approve is trunk = 0)
-    it uses the follow cql:
-    "SELECT e FROM tangle.bundle WHERE bh = ? AND lb = 30 AND ix < ? AND id = ? ALLOW FILTERING"
-    e column hold the trunk, so this query will fetch all the transactions for bundle_hash bh
-    with attachmentID id(head_hash), and current_index less_than(!=) last_index.
-  """
-  def bundle_query(0,lx,bh,id,ts,ref,opts) do
-    {Tangle, Bundle}
-    |> select([:e]) |> type(:stream)
-    |> assign(bh: bh, ix: 0, lx: lx, id: id, ts: ts)
-    |> cql(@bundle_cql)
-    |> values([{:blob,bh},{:blob,lx},{:blob,id}])
-    |> opts(opts || %{function: {BundleFn, :get_trunk}})
-    |> pk([bh: bh]) |> prepare?(true) |> reference({:bundle, ref})
-    |> Approvees.query()
-  end
-
-  # pattern matching with ix(trunk = 0) and return the right bundle_cql
-  @spec bundle_cql?(integer) :: binary
-  def bundle_cql?(0) do
-    @bundle_cql
-  end
-  # pattern matching with ix(branch = 1) and return the right bundle_cql
-  @spec bundle_cql?(integer) :: binary
-  def bundle_cql?(1) do
-    @last_tx_bundle_cql
-  end
 end

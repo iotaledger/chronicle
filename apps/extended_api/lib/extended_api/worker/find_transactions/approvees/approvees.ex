@@ -8,6 +8,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees do
   import ExtendedApi.Worker.Helper, only: [ok?: 2, reply: 2]
 
   @edge_cql "SELECT v2,ts,ex,ix,lx FROM tangle.edge WHERE v1 = ? AND lb = 50"
+  @point_tx_bundle_cql "SELECT b FROM tangle.bundle WHERE bh = ? AND lb = 30 AND ts = ? AND ix = ? AND id = ?"
 
   @doc """
     This function starts FindTransactions.Approvees worker.
@@ -221,23 +222,23 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees do
             {:noreply, state}
         end
       {%Compute{result: half_hashes},
-       %{bh: bh, ix: ix, lx: lx, id: id, ts: ts, opts: opts, has_more_pages: true, paging_state: p_state}} ->
+       %{bh: bh, ix: ix, id: id, ts: ts, opts: opts, has_more_pages: true, paging_state: p_state}} ->
         # create new bundle query to fetch the remaining rows
         # we add paging state to the opts.
         opts = Map.put(opts, :paging_state, p_state)
-        {ok?, _, query_state} = Helper.bundle_query(ix,lx,bh,id,ts,qf,opts)
+        {ok?, _, query_state} = Helper.bundle_query(ix,bh,id,ts,qf,opts)
         # we update query_state and hashes in worker's state
         state = %{state | qf => query_state, :hashes => half_hashes++hashes_list}
         # verfiy to proceed or break.
         ok?(ok?, state)
       # this is unprepared error handler
       %Error{reason: :unprepared} ->
-        %{bh: bh, ix: ix, lx: lx, id: id, ts: ts, opts: opts} = query_state
+        %{bh: bh, ix: ix, id: id, ts: ts, opts: opts} = query_state
         # we use hardcoded cql statement of bundle query.
-        cql = Helper.bundle_cql?(ix)
+        cql = @point_tx_bundle_cql
         FastGlobal.delete(cql)
         # create new bundle_query.
-        {ok?, _, _} = Helper.bundle_query(ix,lx,bh,id,ts,qf,opts)
+        {ok?, _, _} = Helper.bundle_query(ix,bh,id,ts,qf,opts)
         # verfiy to proceed or break.
         ok?(ok?, state)
       %Error{reason: reason} ->

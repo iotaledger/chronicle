@@ -12,9 +12,9 @@ defmodule ExtendedApi.Worker.FindTransactions.Tags.EdgeFn do
    This function handle the edge row.
   """
   @spec create_hint(binary, list, list) :: map
-  def create_hint(tag, [el: el], acc) do
+  def create_hint(tag, _, acc) do
     # create hint map
-    %{year: year, month: month} = DateTime.from_unix!(el)
+    %{year: year, month: month} = DateTime.now("Etc/UTC")
     # there is possibility for one hint only per tag.
     [%{tag: tag, year: year, month: month} | acc]
   end

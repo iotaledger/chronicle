@@ -20,19 +20,19 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees.EdgeFn do
    to the next row.
   """
   @spec bundle_queries(Keyword.t, list) :: map
-  def bundle_queries([{:lx, 0},{:ex, ex} | _], %{hashes: hashes} = acc) do
+  def bundle_queries([{:ix, 0},{:ex, ex} | _], %{hashes: hashes} = acc) do
     %{acc | hashes: [ex | hashes]}
   end
 
   # lx(last_index/bundle_length) must be greater than zero.
   @spec bundle_queries(Keyword.t, list) :: map
-  def bundle_queries([lx: lx,ex: ex,ix: ix,v2: v2, ts: ts], %{hashes: hashes, queries_states: queries_states} = acc) do
+  def bundle_queries([ix: ix,ex: ex,v2: v2, ts: ts], %{queries_states: queries_states} = acc) do
     # bh = v2, # id = ex
-    {ok?, qf, query_state} = Helper.bundle_query(ix,lx,v2,ex,ts)
+    {ok?, qf, query_state} = Helper.bundle_query(ix,v2,ex,ts)
     if ok? == :ok do
       # we put the query_state in queries_states,
       # we return updated acc's hashes/queries_states.
-      %{acc | hashes: hashes?(ix, ex, hashes), queries_states: [{qf, query_state} | queries_states]}
+      %{acc | queries_states: [{qf, query_state} | queries_states]}
     else
       # we break.
       {:error, {:dead_shard_stage, ok?}}
@@ -43,15 +43,6 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees.EdgeFn do
   def bundle_queries(_, acc) do
     # we keep breaking
     acc
-  end
-
-  @spec hashes?(integer, binary, list) :: list
-  defp hashes?(0, ex, hashes) do
-    [ex | hashes]
-  end
-  @spec hashes?(integer, binary, list) :: list
-  defp hashes?(1, _ex, hashes) do
-    hashes
   end
 
 end
