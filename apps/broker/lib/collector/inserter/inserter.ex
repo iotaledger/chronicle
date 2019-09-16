@@ -73,7 +73,7 @@ defmodule Broker.Collector.Inserter do
       err? ->
         # those errors are likely due to write-timeout or scylladb related errors
         # TODO: handle them somehow.
-        IO.inspect(err?)
+        IO.inspect({"inserter", err?, query_state[:query][:cql]})
         {:noreply, state}
     end
   end

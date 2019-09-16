@@ -7,11 +7,11 @@ defmodule Broker.Collector.Inserter.Helper do
   @bundle_cql_for_tx_row "INSERT INTO tangle.bundle (bh,lb,ts,ix,id,va,a,b,c,d,e,f,g,h,i) VALUES (?,30,?,?,?,?,?,?,?,?,?,?,?,?,?)"
   @bundle_cql_for_tx_nil_row "INSERT INTO tangle.bundle (bh,lb,ts,ix,id,va,b,c,d,e,f,g,h,i) VALUES (?,30,?,?,?,?,?,?,?,?,?,?,?,?)"
   @edge_cql_for_address_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix,el,lx) VALUES (?,?,?,?,varintAsBlob(?),?,30,?)"
-  @edge_cql_for_tx_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix,el,lx,sx) VALUES (?,?,?,?,?,?,?,?,?)"
+  @edge_cql_for_tx_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix,el,lx,sx) VALUES (?,30,?,?,?,?,?,?,?)"
   @edge_cql_for_tx_nil_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix,el,lx) VALUES (?,30,?,?,?,?,?,?)"
-  @edge_hint_cql_for_address_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix,el) VALUES (?,60,0,varintAsBlob(0),varintAsBlob(0),0,?)"
-  @edge_hint_cql_for_tag_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix,el) VALUES (?,70,0,varintAsBlob(0),varintAsBlob(0),0,?)"
-  @edge_cql_for_approve_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix) VALUES (?,50,?,?,?,?)"
+  @edge_hint_cql_for_address_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix) VALUES (?,60,0,varintAsBlob(0),varintAsBlob(0),0)"
+  @edge_hint_cql_for_tag_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix) VALUES (?,70,0,varintAsBlob(0),varintAsBlob(0),0)"
+  @edge_cql_for_approve_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix,lx) VALUES (?,?,?,?,?,?,?)"
   @zero_value_cql_for_address_row "INSERT INTO tangle.zero_value (v1,yy,mm,lb,ts,v2,ex,ix,el,lx) VALUES (?,?,?,10,?,?,varintAsBlob(0),?,30,?)"
   @tag_cql_for_tag_row "INSERT INTO tangle.tag (p0,p1,yy,mm,p2,p3,rt,ts,th) VALUES (?,?,?,?,?,?,?,?,?)"
 
@@ -37,7 +37,7 @@ defmodule Broker.Collector.Inserter.Helper do
      attachment_timestamp_upper: aupper,  # integer type
      nonce: nonce,
      hash: hash,
-     snapshot_index: snapshot_index  # integer type
+     snapshot_index: snapshot_index  # integer type or nil
      } = tx
 
      address_label = address_label?(value)
@@ -54,23 +54,24 @@ defmodule Broker.Collector.Inserter.Helper do
     {:ok, e_t_r_qf, e_t_r_qs} =
       edge_tx_row_query(hash, timestamp, bundle_hash, head_hash,
       current_index, address_label, last_index, snapshot_index)
-      # v1, ts, v2, ix, lx
-    zero_value_qs = zero_value_address_row_query(zero_value?, address, timestamp, bundle_hash,
+    # extract yy,mm from timestamp
+    %{year: yy, month: mm} = DateTime.from_unix!(timestamp)
+      # v1, ts,yy,mm, v2, ix, lx
+    zero_value_qs = zero_value_address_row_query(zero_value?, address,timestamp,yy,mm, bundle_hash,
       current_index, last_index)
     # approve rows related write queries
     approves_qs = if current_index == last_index do
-      [edge_approve_row_query(trunk, timestamp, bundle_hash, head_hash, 0),
-       edge_approve_row_query(branch, timestamp, bundle_hash, head_hash, 1)]
+      # 50 is a trunk and 51 is branch.
+      [edge_approve_row_query(trunk, 50, timestamp, bundle_hash, head_hash, current_index, last_index),
+       edge_approve_row_query(branch, 51, timestamp, bundle_hash, head_hash, current_index, last_index)]
     else
-      []
+      [edge_approve_row_query(branch, 51, timestamp, bundle_hash, head_hash, current_index, last_index)]
     end
     # tag row in tag table
     # pattern matching on tag :
     <<p0::2-bytes,p1::2-bytes,p2::2-bytes,p3::2-bytes,rt::binary>> = tag
-    # extract yy,mm from timestamp
-    %{year: yy, month: mm} = DateTime.from_unix!(timestamp)
     tag_tag_qs = tag_tag_row_query(p0,p1,yy,mm,p2,p3,rt,timestamp,hash)
-    edge_tag_qs = edge_tag_row_query(tag,timestamp)
+    edge_tag_qs = edge_tag_row_query(tag)
     acc = approves_qs ++ zero_value_qs ++ [{b_a_r_qf, b_a_r_qs},{b_t_r_qf, b_t_r_qs},{e_a_r_qf, e_a_r_qs},
       {e_t_r_qf, e_t_r_qs},edge_tag_qs,tag_tag_qs] ++ acc
     _queries(zero_value?,rest, head_hash, acc)
@@ -163,9 +164,8 @@ defmodule Broker.Collector.Inserter.Helper do
 
   # function which create a query for address row in zero_value table if true..
   # and return the query state.
-  defp zero_value_address_row_query(true, v1, ts, v2, ix, lx) do
+  defp zero_value_address_row_query(true, v1, ts,yy,mm, v2, ix, lx) do
     # v1 blob, yy smallint, mm smallint, ts varint, v2 blob, ix varint, lx varint
-    %{year: yy, month: mm} = DateTime.from_unix!(ts)
     {:ok, qf, qs} =
       {Tangle, ZeroValue}
       |> cql(@zero_value_cql_for_address_row)
@@ -187,17 +187,16 @@ defmodule Broker.Collector.Inserter.Helper do
 
 
   # function return empty list as the bundle doesn't require zero_value query.
-  defp zero_value_address_row_query(_, _, _, _, _, _) do
+  defp zero_value_address_row_query(_,_,_,_,_, _, _, _) do
     []
   end
 
-  defp edge_address_row_query(true, v1, _, ts, _, _, _, _) do
+  defp edge_address_row_query(true, v1, _, _ts, _, _, _, _) do
     {Tangle, Edge}
     |> cql(@edge_hint_cql_for_address_row)
     |> type(:insert)
     |> values([
-      {:blob, v1},
-      {:varint, ts}]) # NOTE timestamp as extralabel el.
+      {:blob, v1}])
     |> pk([v1: v1])
     |> prepare?(true)
     |> assign_query()
@@ -259,16 +258,17 @@ defmodule Broker.Collector.Inserter.Helper do
     |> Inserter.logged()
   end
 
-  defp edge_approve_row_query(v1, ts, v2, ex, ix) do
+  defp edge_approve_row_query(v1,lb, ts, v2, ex, ix,lx) do
     {:ok, qf, qs} =
       cql({Tangle, Edge},@edge_cql_for_approve_row)
       |> type(:insert)
       |> values([
         {:blob, v1},
+        {:tinyint, lb},
         {:varint, ts},
         {:blob, v2},
         {:blob, ex}, # this is blob.
-        {:varint, ix}])
+        {:varint, ix},{:varint, lx}])
       |> pk([v1: v1])
       |> prepare?(true)
       |> assign_query()
@@ -276,13 +276,12 @@ defmodule Broker.Collector.Inserter.Helper do
     {qf,qs}
   end
 
-  defp edge_tag_row_query(v1,ts) do
+  defp edge_tag_row_query(v1) do
     {:ok,qf,qs} =
       cql({Tangle, Edge},@edge_hint_cql_for_tag_row)
       |> type(:insert)
       |> values([
-        {:blob, v1}, # is tag
-        {:varint, ts}]) # NOTE timestamp as extralabel el.
+        {:blob, v1}])
       |> pk([v1: v1])
       |> prepare?(true)
       |> assign_query()
