@@ -4,6 +4,7 @@ defmodule Core.Application do
   @moduledoc false
 
   alias OverDB.{Ring.Monitor, Engine.Preparer}
+  alias Core.Utils.Importer
   require Logger
   use Application
 
@@ -15,7 +16,8 @@ defmodule Core.Application do
     children = [
       {Monitor, [otp_app: otp_app]},
       {Preparer, [otp_app: otp_app]},
-    {Core.Supervisor.Cluster, dc1_args}
+    {Core.Supervisor.Cluster, dc1_args},
+    {Importer, []}
     ]
     opts = [strategy: :one_for_one, name: :core]
     Supervisor.start_link(children, opts)

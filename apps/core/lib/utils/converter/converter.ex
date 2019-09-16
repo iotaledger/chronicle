@@ -126,6 +126,49 @@ defmodule Core.Utils.Converter do
   end
 
   @doc """
+    convert dmp file line to tx_object.
+  """
+  @spec line_81_to_tx_object(binary,binary) :: Transaction.t
+  def line_81_to_tx_object(line,snapshot_index) do
+    # pattern matching
+    <<hash::81-bytes,_,signature::2187-bytes,address::81-bytes,value::27-bytes,
+    obsolete_tag::27-bytes,timestamp::9-bytes,current_index::9-bytes,
+    last_index::9-bytes,bundle_hash::81-bytes, trunk::81-bytes,
+    branch::81-bytes, nonce::81-bytes,_>> = line
+    # - First we convert some columns to varinteger form.
+    last_index = trytes_to_integer(last_index)
+    current_index = trytes_to_integer(current_index)
+    value = trytes_to_integer(value)
+    timestamp = trytes_to_integer(timestamp)
+    # - Put transaction line in map.
+    Transaction.create(signature, address,value, obsolete_tag,timestamp,
+      current_index,last_index,bundle_hash,trunk,branch,nil,nil,
+      nil,nil,nonce,hash,snapshot_index)
+  end
+
+  @doc """
+    convert dmp file line to tx_object.
+  """
+  @spec line_81_to_tx_object(binary) :: Transaction.t
+  def line_81_to_tx_object(line) do
+    # pattern matching
+    <<hash::81-bytes,_,signature::2187-bytes,address::81-bytes,value::27-bytes,
+    obsolete_tag::27-bytes,timestamp::9-bytes,current_index::9-bytes,
+    last_index::9-bytes,bundle_hash::81-bytes, trunk::81-bytes,
+    branch::81-bytes, nonce::81-bytes,_,snapshot_index::binary>> = line
+    # - First we convert some columns to varinteger form.
+    last_index = trytes_to_integer(last_index)
+    current_index = trytes_to_integer(current_index)
+    value = trytes_to_integer(value)
+    timestamp = trytes_to_integer(timestamp)
+    snapshot_index = String.to_integer(snapshot_index)
+    # - Put transaction line in map.
+    Transaction.create(signature, address,value, obsolete_tag,timestamp,
+      current_index,last_index,bundle_hash,trunk,branch,nil,nil,
+      nil,nil,nonce,hash,snapshot_index)
+  end
+
+  @doc """
     Convert trytes to tx-object
   """
   @spec trytes_to_tx_object(binary, binary, integer) :: Transaction.t
