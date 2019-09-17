@@ -11,7 +11,7 @@ These instructions will get you a copy of the project up and running on your loc
 What things you need to install and have in advance
 
 - Independent running Scylla cluster ([ScyllaDB](https://docs.scylladb.com/getting-started/) >= 3.0.6)
-- [Elixir](https://elixir-lang.org/install.html) >= 1.8.1 and [Phoenix](https://hexdocs.pm/phoenix/installation.html) up and running in Chronicle node
+- [Elixir](https://elixir-lang.org/install.html) >= 1.8.1, Erlang VM >= 22, and [Phoenix](https://hexdocs.pm/phoenix/installation.html) up and running in Chronicle node
 - Installed [Bazel](https://docs.bazel.build/versions/master/install.html)
 
 
@@ -25,9 +25,9 @@ A step by step series of commands that tell you how to get a chronicle up and ru
 - Open Chronicle folder using a source code editor (ie [Atom](https://atom.io/))
 - Configure the Core app in the following config file `apps/core/config/config.exs`
 - Configure the Broker app in the following config file `apps/broker/config/config.exs`
-- Download all the [dmps](https://u204324.your-storagebox.de/data/)
+- Download all the [dmps](http://u204324-sub2.your-storagebox.de/)**Username:** u204324-sub2, **Password:** Ldtd22LiXaztAPUg
 - Put the dmps in path/to/chronicle/historical/data
-- Make sure path/to/chronicle/historical/dmps.txt has all the filenames line by line (don't forget to close it)
+- Make sure that the `dmps.txt` file has all the names of the files that you moved to the `path/to/chronicle/historical/data` directory (without the `.dmp` file extension), then close the file
 
 **Step 2 Commands**
 
@@ -46,6 +46,7 @@ A step by step series of commands that tell you how to get a chronicle up and ru
 
 NOTE: Chronicle will start importing the dmps files into ScyllaDB the moment it boots.
 
+When Chronicle starts, you should see the `imported the last dmp 'milestone' file` message. When you see this message, you can check that the import was successful by opening the `dmps.txt` file and seeing that it's empty.
 
 ## The supported API calls
 
