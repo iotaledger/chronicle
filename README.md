@@ -25,6 +25,9 @@ A step by step series of commands that tell you how to get a chronicle up and ru
 - Open Chronicle folder using a source code editor (ie [Atom](https://atom.io/))
 - Configure the Core app in the following config file `apps/core/config/config.exs`
 - Configure the Broker app in the following config file `apps/broker/config/config.exs`
+- Download all the [dmps](https://u204324.your-storagebox.de/data/)
+- Put the dmps in path/to/chronicle/historical/data
+- Make sure path/to/chronicle/historical/dmps.txt has all the filenames line by line (don't forget to close it)
 
 **Step 2 Commands**
 
@@ -37,11 +40,11 @@ A step by step series of commands that tell you how to get a chronicle up and ru
     - `mix compile`
 - Start/Run Chronicle
 
-    - `SECRET_KEY_BASE=thegeneratedsecretfromabovecommand PORT=4000 HOST=localhost MIX_ENV=prod elixir --name app@hostname --cookie "MyChronicleCookie" -S mix run --no-compile --no-halt`
+    - `SECRET_KEY_BASE=thegeneratedsecretfromabovecommand PORT=4000 HOST=localhost MIX_ENV=prod elixir --name app@hostname --cookie "MyChronicleCookie" -S mix run --no-halt`
 
 - Enjoy
 
-
+NOTE: Chronicle will start importing the dmps files into ScyllaDB the moment it boots.
 
 
 ## The supported API calls
