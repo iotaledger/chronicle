@@ -91,6 +91,7 @@ defmodule Core.Utils.Importer do
   # note: the nonce is 81-trytes version
   defp import_dmp(snapshot_index,state) when snapshot_index in [6000, 13250, 18675] do
     file = File.stream!("./historical/data/#{snapshot_index}.dmp")
+    Logger.info("Importing #{snapshot_index} file")
     transactions =
       for <<hash::81-bytes,_,_trytes::binary>> = line <- file ,into: %{} do
         {hash, Converter.line_81_to_tx_object(line, snapshot_index)}
@@ -101,9 +102,9 @@ defmodule Core.Utils.Importer do
 
   # process the ordered and vaild dmps.
   # note: the nonce is 81-trytes version
-  defp import_dmp(snapshot_index,state) when snapshot_index < 217000 do
+  defp import_dmp(snapshot_index,state) when snapshot_index < 242662 do
     # process the file now
-    Logger.info("Processing #{snapshot_index} file")
+    Logger.info("Importing #{snapshot_index} file")
     # first we open the dmp
     file = File.open!("./historical/data/#{snapshot_index}.dmp")
     Map.put(Map.put(state, :file, file), :current?, :fetch_bundle_81)
@@ -111,9 +112,9 @@ defmodule Core.Utils.Importer do
 
   # process the ordered and vaild dmps.
   # note: the nonce is 27-trytes version
-  defp import_dmp(snapshot_index,state) when snapshot_index >= 217000 do
+  defp import_dmp(snapshot_index,state) when snapshot_index >= 242662 do
     # process the file now
-    Logger.info("Processing #{snapshot_index} file")
+    Logger.info("Importing #{snapshot_index} file")
     # first we open the dmp
     file = File.open!("./historical/data/#{snapshot_index}.dmp")
     Map.put(Map.put(state, :file, file), :current?, :fetch_bundle_27)

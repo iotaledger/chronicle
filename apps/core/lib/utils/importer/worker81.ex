@@ -74,7 +74,7 @@ defmodule Core.Utils.Importer.Worker81 do
       err? ->
         # those errors are likely due to write-timeout or scylladb related errors
         # TODO: handle them somehow.
-        IO.inspect({"worker81", err?})
+        Logger.error("Error from worker81, #{inspect err?}") 
         {:noreply, state}
     end
   end
@@ -101,7 +101,6 @@ defmodule Core.Utils.Importer.Worker81 do
       Process.send_after(self(), :check, 10000)
       {:noreply, state}
     else
-      IO.inspect("stoping")
       {:stop, :normal, state}
     end
   end

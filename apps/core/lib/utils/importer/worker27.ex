@@ -74,7 +74,7 @@ defmodule Core.Utils.Importer.Worker27 do
       err? ->
         # those errors are likely due to write-timeout or scylladb related errors
         # TODO: handle them somehow.
-        IO.inspect({"worker27", err?})
+        Logger.error("Error from worker27, #{inspect err?}")
         {:noreply, state}
     end
   end

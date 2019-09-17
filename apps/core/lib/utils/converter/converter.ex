@@ -118,7 +118,7 @@ defmodule Core.Utils.Converter do
     atime = trytes_to_integer(atime)
     alower = trytes_to_integer(alower)
     aupper = trytes_to_integer(aupper)
-    snapshot_index = String.to_integer(snapshot_index)
+    snapshot_index = String.to_integer(String.trim(snapshot_index, "\n"))
     # - Put transaction line in map.
     Transaction.create(signature, address,value, obsolete_tag,timestamp,
       current_index,last_index,bundle_hash,trunk,branch,tag,atime,
@@ -161,7 +161,7 @@ defmodule Core.Utils.Converter do
     current_index = trytes_to_integer(current_index)
     value = trytes_to_integer(value)
     timestamp = trytes_to_integer(timestamp)
-    snapshot_index = String.to_integer(snapshot_index)
+    snapshot_index = String.to_integer(String.trim(snapshot_index, "\n"))
     # - Put transaction line in map.
     Transaction.create(signature, address,value, obsolete_tag,timestamp,
       current_index,last_index,bundle_hash,trunk,branch,nil,nil,
