@@ -7,7 +7,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees do
   alias ExtendedApi.Worker.FindTransactions.Approvees.Helper
   import ExtendedApi.Worker.Helper, only: [ok?: 2, reply: 2]
 
-  @edge_cql "SELECT v2,ts,ex,ix,lx FROM tangle.edge WHERE v1 = ? AND lb = 50"
+  @edge_cql "SELECT lx,ix,ex,v2,ts FROM tangle.edge WHERE v1 = ? AND lb IN (50,51)"
   @point_tx_bundle_cql "SELECT b FROM tangle.bundle WHERE bh = ? AND lb = 30 AND ts = ? AND ix = ? AND id = ?"
 
   @doc """
@@ -192,7 +192,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees do
     # first we fetch the query state from the state using the qf key.
     query_state = Map.get(state, qf)
     # now we decode the buffer using the query_state.
-    case Protocol.decode_full(buffer,query_state) do
+    case Protocol.decode_all(call,buffer,query_state) do
       # this indicates the hashes for bundle_hash state[qf][:bh] are ready
       {%Compute{result: hashes}, %{has_more_pages: false}} ->
         # hashes might be an empty list in rare condiations,

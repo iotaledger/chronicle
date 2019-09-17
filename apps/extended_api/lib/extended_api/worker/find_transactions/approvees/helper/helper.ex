@@ -5,8 +5,8 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees.Helper do
     Which is gonna be used by FindTransactions.Approvees worker
   """
 
-  alias ExtendedApi.Worker.FindTransactions.{Approvees, Approvees.EdgeFn}
-  alias Core.DataModel.{Keyspace.Tangle, Table.Edge}
+  alias ExtendedApi.Worker.FindTransactions.{Approvees, Approvees.BundleFn, Approvees.EdgeFn}
+  alias Core.DataModel.{Keyspace.Tangle, Table.Edge, Table.Bundle}
   import OverDB.Builder.Query
 
   # these types check guards
@@ -14,7 +14,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees.Helper do
 
   @initial_acc %{hashes: [], queries_states: []}
   @max_bigint 9223372036854775807 # will be used to generate random qf.
-  @edge_cql "SELECT v2,lb,ts,ex,ix,lx FROM tangle.edge WHERE v1 = ? AND lb IN (50,51)"
+  @edge_cql "SELECT lx,ix,ex,v2,ts FROM tangle.edge WHERE v1 = ? AND lb IN (50,51)"
   @point_tx_bundle_cql "SELECT b FROM tangle.bundle WHERE bh = ? AND lb = 30 AND ts = ? AND ix = ? AND id = ?"
   # Start of Helper functions for edge table queries ###########################
 
@@ -76,7 +76,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees.Helper do
     {Tangle, Edge}
     # v2 hold bundle_hash,ts is timestamp, ex hold attachmentID which is the headHash(index=0)
     # ix hold 0(trunk) or 1(branch), lx is last_index.
-    |> select([:v2,:lb,:ts,:ex,:ix,:lx]) |> type(:stream)
+    |> select([:lx,:ix,:ex,:v2,:ts]) |> type(:stream)
     |> assign(approve: approve, acc: @initial_acc)
     |> cql(@edge_cql)
     |> values([{:blob, approve}])
@@ -93,7 +93,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees.Helper do
     |> select([:b]) |> type(:stream)
     |> assign(bh: bh, ix: ix, id: id, ts: ts)
     |> cql(@point_tx_bundle_cql)
-    |> values([{:blob,bh},{:varint,ts},{:blob,ix},{:blob,id}])
+    |> values([{:blob,bh},{:varint,ts},{:varint,ix},{:blob,id}])
     |> opts(opts || %{function: {BundleFn, :get_hash}})
     |> pk([bh: bh]) |> prepare?(true) |> reference({:bundle, ref})
     |> Approvees.query()

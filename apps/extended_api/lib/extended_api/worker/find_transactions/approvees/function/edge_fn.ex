@@ -20,15 +20,15 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees.EdgeFn do
    to the next row.
   """
   @spec bundle_queries(Keyword.t, list) :: map
-  def bundle_queries([{:ix, 0},{:ex, ex} | _], %{hashes: hashes} = acc) do
+  def bundle_queries([{:lx, 0},{:ix, 0},{:ex, ex} | _], %{hashes: hashes} = acc) do
     %{acc | hashes: [ex | hashes]}
   end
 
   # lx(last_index/bundle_length) must be greater than zero.
   @spec bundle_queries(Keyword.t, list) :: map
-  def bundle_queries([ix: ix,ex: ex,v2: v2, ts: ts], %{queries_states: queries_states} = acc) do
+  def bundle_queries([lx: _,ix: ix,ex: ex,v2: v2, ts: ts] = row, %{queries_states: queries_states} = acc) do
     # bh = v2, # id = ex
-    {ok?, qf, query_state} = Helper.bundle_query(ix,v2,ex,ts)
+    {ok?, {_,qf}, query_state} = Helper.bundle_query(ix,v2,ex,ts)
     if ok? == :ok do
       # we put the query_state in queries_states,
       # we return updated acc's hashes/queries_states.
@@ -40,7 +40,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Approvees.EdgeFn do
   end
 
   @spec bundle_queries(Keyword.t, {:error, tuple}) :: tuple
-  def bundle_queries(_, acc) do
+  def bundle_queries(row, acc) do
     # we keep breaking
     acc
   end
