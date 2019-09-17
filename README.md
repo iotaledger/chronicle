@@ -6,12 +6,14 @@ Chronicle is a distributed fault tolerance permanode that scales out and up, des
 
 These instructions will get you a copy of the project up and running on your local machine for testing purposes.
 
+See our [documentation portal](https://docs.iota.org/docs/node-software/0.1/chronicle/introduction/overview) for more information.
+
 ### Prerequisites
 
 What things you need to install and have in advance
 
 - Independent running Scylla cluster ([ScyllaDB](https://docs.scylladb.com/getting-started/) >= 3.0.6)
-- [Elixir](https://elixir-lang.org/install.html) >= 1.8.1, Erlang VM >= 22, and [Phoenix](https://hexdocs.pm/phoenix/installation.html) up and running in Chronicle node
+- [Elixir](https://elixir-lang.org/install.html) >= 1.8.1, Erlang VM >= 22, and [Phoenix](https://hexdocs.pm/phoenix/installation.html) up and running in Chronicle node. If your package manager doesn't offer these versions, use [this tool](https://github.com/asdf-vm/asdf).
 - Installed [Bazel](https://docs.bazel.build/versions/master/install.html)
 
 
