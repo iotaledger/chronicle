@@ -192,7 +192,6 @@ defmodule Core.Utils.Importer do
       # we still have more pending bundles, so we should wait and return state
       state
     else
-      Logger.info("Finished one dmp")
       # finished the dmp, therefore we should process the remaining dmps(if any) and log the result.
       # and update the status.txt file and dmps state, finally we return state
       process_dmp?(state)
@@ -208,7 +207,9 @@ defmodule Core.Utils.Importer do
   end
 
   def process_dmp?(%{dmps: [dmp | rest] = dmps} = state) when length(dmps) > 1 do
-    File.close()
+    if String.to_integer(dmp) > 18675 do
+      File.close(state[:file])
+    end
     Logger.info("Imported #{dmp}")
     # update the dmps text file
     File.write("./historical/dmps.txt", Enum.join(rest, "\n"))
