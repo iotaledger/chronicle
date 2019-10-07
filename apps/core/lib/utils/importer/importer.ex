@@ -89,7 +89,7 @@ defmodule Core.Utils.Importer do
 
   # process the unordered and only confirmed dmps
   # note: the nonce is 81-trytes version
-  defp import_dmp(snapshot_index,state) when snapshot_index in [6000, 13250, 18675] do
+  defp import_dmp(snapshot_index,state) when snapshot_index in [6000, 13157, 18675] do
     file = File.stream!("./historical/data/#{snapshot_index}.dmp")
     Logger.info("Importing #{snapshot_index} file")
     transactions =
