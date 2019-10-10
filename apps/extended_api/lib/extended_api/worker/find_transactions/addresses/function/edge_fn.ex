@@ -49,7 +49,7 @@ defmodule ExtendedApi.Worker.FindTransactions.Addresses.EdgeFn do
   @spec bundle_queries(binary, Keyword.t, map) :: tuple
   def bundle_queries(address, [{:lb, 60}|_], acc) when is_map(acc) do
     # lb is hint = 60.
-    %{year: year, month: month} = DateTime.now("Etc/UTC")
+    {:ok, %{year: year, month: month}}= DateTime.now("Etc/UTC")
     # there is possibility for one hint only per address.
     hint = %{address: address, year: year, month: month}
     %{acc | hint: [hint]}
