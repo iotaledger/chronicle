@@ -129,7 +129,7 @@ defmodule Core.Utils.Importer do
   end
 
   defp get_bundles_from_transactions_map(transactions) do
-    Enum.reduce(transactions,[[]], fn({_, %{current_index: cx, last_index: lx, trunk: trunk} = tx }, acc) ->
+    Enum.reduce(transactions,[], fn({_, %{current_index: cx, last_index: lx, trunk: trunk} = tx }, acc) ->
       case cx do
         0 ->
           if lx == 0 do
@@ -188,7 +188,7 @@ defmodule Core.Utils.Importer do
   end
 
   def process_more?(%{pending: pending, current?: true} = state) do
-    if pending != 1 do
+    if pending != 0 do
       # we still have more pending bundles, so we should wait and return state
       state
     else
@@ -227,10 +227,10 @@ defmodule Core.Utils.Importer do
   end
 
   def process_bundle_27(bundle) do
-    Worker27.start_link(bundle)
+    Worker27.start_link(Enum.reverse(bundle))
   end
 
   def process_bundle_81(bundle) do
-    Worker81.start_link(bundle)
+    Worker81.start_link(Enum.reverse(bundle))
   end
 end
