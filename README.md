@@ -38,7 +38,6 @@ A step by step series of commands that tell you how to get a chronicle up and ru
 - Generate phoenix secret and then copy the 64-bytes secret string
     - `mix phx.gen.secret`
 - Compile the project
-    - `mix deps.compile`
     - `mix compile`
 - Start/Run Chronicle
 
