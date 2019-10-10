@@ -8,7 +8,7 @@ defmodule Core.Utils.Importer do
 
   def start_link(_args) do
     Logger.info("Starting the importing script")
-    GenServer.start_link(__MODULE__,%{dmps: [], max: @max, pending: 0},name: :importer)
+    GenServer.start_link(__MODULE__,%{dmps: [], max: @max, pending: 0, total: 0},name: :importer)
   end
 
   def init(state) do
@@ -16,13 +16,14 @@ defmodule Core.Utils.Importer do
     |> String.split("\n", trim: true)
     Process.sleep(30000)
     Logger.info("Importer started")
+    Process.send_after(self(), :monitor, 300000)
     send(self(), :import)
     state = Map.put(state, :dmps, dmps)
     {:ok, state}
   end
 
-  def handle_info(:finished_one, %{pending: pending}= state) do
-    state = process_more?(%{state | pending: pending-1})
+  def handle_info(:finished_one, %{pending: pending, total: total}= state) do
+    state = process_more?(%{state | pending: pending-1, total: total+1})
     {:noreply, state}
   end
 
@@ -84,6 +85,17 @@ defmodule Core.Utils.Importer do
         :eof ->
           %{state | current?: true}
       end
+    {:noreply, state}
+  end
+
+  def handle_info(:monitor, %{total: t, dmps: []}= state) do
+    Logger.info("Done: total #{t} bundles")
+    {:noreply, state}
+  end
+
+  def handle_info(:monitor, %{total: t, dmps: [dmp | _]}= state) do
+    Logger.info("In progress: #{dmp}.dmp; Loaded #{t} bundles")
+    Process.send_after(self(), :monitor, 300000)
     {:noreply, state}
   end
 
