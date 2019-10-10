@@ -32,13 +32,14 @@ defmodule Broker.Collector.BundleValidator do
 
   defp process_bundle(bundle) do
     # create bundle_trytes from :trytes key inside each tx in bundle
+    reversed_bundle = Enum.reverse(bundle)
     bundle_trytes =
-      for %{trytes: trytes} <- Enum.reverse(bundle), into: "", do: trytes
+      for %{trytes: trytes} <- reversed_bundle, into: "", do: trytes
     # bundle length
     bundle_length = length(bundle)
     if Nifs.validate_bundle(bundle_length, bundle_trytes) do
       # insert bundle by spawn genserver inserter
-      Inserter.start_link(bundle)
+      Inserter.start_link(reversed_bundle)
     end
   end
 
