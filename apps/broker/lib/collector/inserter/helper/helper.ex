@@ -55,7 +55,14 @@ defmodule Broker.Collector.Inserter.Helper do
       edge_tx_row_query(hash, timestamp, bundle_hash, head_hash,
       current_index, address_label, last_index, snapshot_index)
     # extract yy,mm from timestamp
-    %{year: yy, month: mm} = DateTime.from_unix!(timestamp)
+    %{year: yy, month: mm} =
+      try do
+        DateTime.from_unix!(timestamp)
+      rescue
+        e in ArgumentError ->
+          %ArgumentError{message: <<"invalid Unix time ", timestamp::10-bytes, _::binary>>} = e
+          String.to_integer(timestamp) |> DateTime.from_unix!()
+      end
       # v1, ts,yy,mm, v2, ix, lx
     zero_value_qs = zero_value_address_row_query(zero_value?, address,timestamp,yy,mm, bundle_hash,
       current_index, last_index)
