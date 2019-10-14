@@ -93,8 +93,8 @@ defmodule Core.Utils.Importer do
     {:noreply, state}
   end
 
-  def handle_info(:monitor, %{total: t, dmps: [dmp | _]}= state) do
-    Logger.info("In progress: #{dmp}.dmp; Loaded #{t} bundles")
+  def handle_info(:monitor, %{total: t, dmps: [dmp | _], pending: p}= state) do
+    Logger.info("In progress: #{dmp}.dmp; Loaded #{t} bundles, pending: #{p}")
     Process.send_after(self(), :monitor, 300000)
     {:noreply, state}
   end
@@ -141,7 +141,7 @@ defmodule Core.Utils.Importer do
   end
 
   defp get_bundles_from_transactions_map(transactions) do
-    Enum.reduce(transactions,[], fn({_, %{current_index: cx, last_index: lx, trunk: trunk} = tx }, acc) ->
+    Enum.reduce(transactions,[], fn({_, %{current_index: cx, last_index: lx, trunk: trunk} = tx}, acc) ->
       case cx do
         0 ->
           if lx == 0 do

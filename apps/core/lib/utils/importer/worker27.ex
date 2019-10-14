@@ -92,6 +92,8 @@ defmodule Core.Utils.Importer.Worker27 do
     # TODO: retry logic, (retry to re-insert the whole bundle)
   """
   def handle_cast({:send?, _, _}, state) do
+    Logger.error("unsuccessful send request, retry in progress")
+    start_link(state[:bundle])
     {:stop, :normal, state}
   end
 
