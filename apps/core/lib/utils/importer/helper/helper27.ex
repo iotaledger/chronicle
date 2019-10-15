@@ -62,8 +62,6 @@ defmodule Core.Utils.Importer.Helper27 do
         e in ArgumentError ->
           %ArgumentError{message: <<"invalid Unix time ", timestamp::10-bytes, _::binary>>} = e
           String.to_integer(timestamp) |> DateTime.from_unix!()
-        e ->
-          Logger.error("Error #{head_hash}, #{inspect e}")
       end
       # v1, ts,yy,mm, v2, ix, lx
     zero_value_qs = zero_value_address_row_query(zero_value?, address,timestamp,yy,mm, bundle_hash,
