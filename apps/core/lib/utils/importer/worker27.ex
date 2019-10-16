@@ -64,16 +64,21 @@ defmodule Core.Utils.Importer.Worker27 do
         # retry the query which faild to get inserted due to unprepared statement
         # first we fetch the cql statement from the query_state
         %{query: %{cql: cql} = query} = query_state
-        Logger.warn("retrying: #{qf}, query: #{inspect query}")
+        Logger.warn("retrying: #{qf}, due to :unprepared")
         # delete cql from the cache
         FastGlobal.delete(cql)
         # resend the query(logged)
         {:ok, _, _} = logged(query)
         # we return state as it's because we are retrying again.
         {:noreply, state}
+      %Error{reason: :write_timeout} ->
+        Logger.warn("retrying: #{qf} after 10 seconds, due to :write_timeout")
+        Process.sleep(10000)
+        # resend the query(logged)
+        {:ok, _, _} = logged(query_state[:query])
+        # we return state as it's because we are retrying again.
+        {:noreply, state}
       err? ->
-        # those errors are likely due to write-timeout or scylladb related errors
-        # TODO: handle them somehow.
         Logger.error("Error from worker27, #{inspect err?}")
         {:noreply, state}
     end
