@@ -21,8 +21,8 @@ step by step guide to install erlang/elixir (recommended):
 - add erlang plugin to asdf `asdf plugin-add erlang https://github.com/asdf-vm/asdf-erlang.git`
 - add elixir plugin to asdf `asdf plugin-add elixir https://github.com/asdf-vm/asdf-elixir.git`
 - follow this https://github.com/asdf-vm/asdf-erlang#before-asdf-install
-- install erlang `asdf install erlang 22.0`
-- install elixir `asdf install erlang 1.9.1`
+- install erlang `asdf install erlang 22.0 && asdf global erlang 22.0`
+- install elixir `asdf install erlang 1.9.1 && asdf global elixir 1.9.1`
 
 ### Installing
 
