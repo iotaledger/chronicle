@@ -13,7 +13,7 @@ See our [documentation portal](https://docs.iota.org/docs/node-software/0.1/chro
 What things you need to install and have in advance
 
 - Independent running Scylla cluster ([ScyllaDB](https://docs.scylladb.com/getting-started/) >= 3.0.6)
-- [Elixir](https://elixir-lang.org/install.html) >= 1.8.1, Erlang VM >= 22, and [Phoenix](https://hexdocs.pm/phoenix/installation.html) up and running in Chronicle node. If your package manager doesn't offer these versions, use [this tool](https://github.com/asdf-vm/asdf). see below (recommended)
+- [Elixir](https://elixir-lang.org/install.html) >= 1.8.1, [Erlang](https://www.erlang.org/downloads) VM >= 22, and [Phoenix](https://hexdocs.pm/phoenix/installation.html) up and running in Chronicle node. If your package manager doesn't offer these versions, use [this tool](https://github.com/asdf-vm/asdf). see below (recommended)
 - Installed [Bazel](https://docs.bazel.build/versions/master/install.html)
 
 step by step guide to install erlang/elixir (recommended):
