@@ -13,10 +13,16 @@ See our [documentation portal](https://docs.iota.org/docs/node-software/0.1/chro
 What things you need to install and have in advance
 
 - Independent running Scylla cluster ([ScyllaDB](https://docs.scylladb.com/getting-started/) >= 3.0.6)
-- [Elixir](https://elixir-lang.org/install.html) >= 1.8.1, Erlang VM >= 22, and [Phoenix](https://hexdocs.pm/phoenix/installation.html) up and running in Chronicle node. If your package manager doesn't offer these versions, use [this tool](https://github.com/asdf-vm/asdf).
+- [Elixir](https://elixir-lang.org/install.html) >= 1.8.1, Erlang VM >= 22, and [Phoenix](https://hexdocs.pm/phoenix/installation.html) up and running in Chronicle node. If your package manager doesn't offer these versions, use [this tool](https://github.com/asdf-vm/asdf). see below (recommended)
 - Installed [Bazel](https://docs.bazel.build/versions/master/install.html)
 
-
+step by step guide to install erlang/elixir (recommended):
+- install asdf tool following https://asdf-vm.com/#/core-manage-asdf-vm
+- add erlang plugin to asdf `asdf plugin-add erlang https://github.com/asdf-vm/asdf-erlang.git`
+- add elixir plugin to asdf `asdf plugin-add elixir https://github.com/asdf-vm/asdf-elixir.git`
+- follow this https://github.com/asdf-vm/asdf-erlang#before-asdf-install
+- install erlang `asdf install erlang 22.0`
+- install elixir `asdf install erlang 1.9.1`
 
 ### Installing
 
