@@ -1,13 +1,17 @@
 defmodule Mix.Tasks.Compile.Broker do
   def run(_args) do
     erlang_path = :erlang.iolist_to_binary(:code.root_dir ++ '/erts-' ++ :erlang.system_info(:version) ++ '/include')
-    broker_c_src_path = "apps/broker/c_src"
+    {broker_c_src_path, broker_priv_path} = if String.ends_with?(File.cwd!, "chronicle") do
+      {"apps/broker/c_src", "apps/broker/priv"}
+    else
+      {"c_src", "priv"}
+    end
     # copy headers from erlang_path to broker_c_src_path
     File.cp_r(erlang_path, broker_c_src_path)
     # run the following command to build bazel
-    {result, _errcode} = System.cmd("bazel", ["build", ":nifs.so"], cd: "apps/broker/c_src")
+    {result, _errcode} = System.cmd("bazel", ["build", ":nifs.so"], cd: broker_c_src_path)
     # copy binary .so file to priv folder
-    File.copy(broker_c_src_path <> "/bazel-bin/nifs.so", "apps/broker/priv/nifs.so")
+    File.copy(broker_c_src_path <> "/bazel-bin/nifs.so", broker_priv_path <> "/nifs.so")
     IO.binwrite(result)
   end
 end
