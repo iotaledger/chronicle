@@ -20,6 +20,11 @@ config :broker,
       # add the zmq nodes urls to listen to sn_trytes(confirmed transactions) topic
     ]
   ],
+  __BACKUP_NODES__: [
+      # here you put urls(string type each), will be used to recollect bundle.
+    ],
+  __RETERIES_RECOLLECTOR__: 5, # recollector will attempt to query transaction from backup_nodes up to,
+  __MAX_TIME_RECOLLECTOR__: 5.5, # curl's max_time param in seconds each getTrytes retry will get this max_time.
   __MAX_DEMAND__: 64,
   __TX_TTL__: 10000, # Time to live ms (10 seconds)
   __BUNDLE_TTL__: 10000, # ms (10 seconds)

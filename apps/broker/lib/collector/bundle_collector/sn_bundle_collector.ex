@@ -12,7 +12,7 @@ defmodule Broker.Collector.SnBundleCollector do
   require Logger
   require Broker.Collector.Ring
   alias Broker.Collector.Ring
-
+  alias Broker.Collector.BundleCollector.Recollector
   @bundle_tll Application.get_env(:broker, :__BUNDLE_TTL__) || 30000
 
   def start_link(args) do
@@ -41,9 +41,11 @@ defmodule Broker.Collector.SnBundleCollector do
     state =
       case state[hash] do
         # we check with the head
-        [%{current_index: ^current_index} |_] ->
-          # drop bundle because its not active.
-          Logger.warn("Wasn't able to collect sn_bundle: #{hash}")
+        [%{current_index: ^current_index} |_] = bundle ->
+          # attempt to recollect it from IRI(s) using trunks.
+          # first we run recollector with the provided bundle,
+          Recollector.start_link(%{bundle: bundle, response_to: self()})
+          # also we delete the bundle from our state.
           Map.delete(state, hash)
         _nil_or_tx_object_with_updated_current_index ->
           # return state
@@ -105,6 +107,11 @@ defmodule Broker.Collector.SnBundleCollector do
           # as long we return the state
           {:noreply, [], state}
       end
+  end
+
+  def handle_info({:recollected_bundle, bundle}, state) do
+    # push the recollected_bundle as event for processing/verifying from bundle_validator.
+    {:noreply, [bundle], state}
   end
 
   def child_spec(args) do

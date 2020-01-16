@@ -43,7 +43,7 @@ defmodule Broker.Collector.TxBundleCollector do
         # we check with the head
         [%{current_index: ^current_index} |_] ->
           # drop bundle because its not active.
-          Logger.warn("Wasn't able to collect bundle: #{hash}")
+          # for now we don't recollect bundles from tx_trytes topic, to not open an attack vector.
           Map.delete(state, hash)
         _nil_or_tx_object_with_updated_current_index ->
           # return state
