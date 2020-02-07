@@ -54,6 +54,11 @@ defmodule Broker.Collector.SnBundleCollector do
     {:noreply,[], state}
   end
 
+  def handle_info({:recollected_bundle, bundle}, state) do
+    # push the recollected_bundle as event for processing/verifying from bundle_validator.
+    {:noreply, [bundle], state}
+  end
+  
   # handle new flow of head_transactions(new bundles)
   def handle_cast({:new, tx_object}, %{name: name} = state) do
       case tx_object do
@@ -109,10 +114,6 @@ defmodule Broker.Collector.SnBundleCollector do
       end
   end
 
-  def handle_info({:recollected_bundle, bundle}, state) do
-    # push the recollected_bundle as event for processing/verifying from bundle_validator.
-    {:noreply, [bundle], state}
-  end
 
   def child_spec(args) do
     %{

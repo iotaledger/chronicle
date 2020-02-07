@@ -1,19 +1,16 @@
 defmodule Core.Utils.Importer.Helper81 do
 
   import OverDB.Builder.Query
-  alias Core.DataModel.{Keyspace.Tangle, Table.Bundle, Table.Edge, Table.ZeroValue,Table.Tag}
+  alias Core.DataModel.{Keyspace.Tangle, Table.Bundle, Table.Edge, Table.ZeroValue}
   alias Core.Utils.Importer.Worker81
   @bundle_cql_for_address_row "INSERT INTO tangle.bundle (bh,lb,ts,ix,id,va,a,d,e,g) VALUES (?,?,?,?,?,?,?,?,?,?)"
   @bundle_cql_for_tx_row "INSERT INTO tangle.bundle (bh,lb,ts,ix,id,va,a,b,c,e,f) VALUES (?,30,?,?,?,?,?,?,?,?,?)"
-  @bundle_cql_for_tx_nil_row "INSERT INTO tangle.bundle (bh,lb,ts,ix,id,va,b,c,d,e,f,g,h,i) VALUES (?,30,?,?,?,?,?,?,?,?,?,?,?,?)"
   @edge_cql_for_address_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix,el,lx) VALUES (?,?,?,?,varintAsBlob(?),?,30,?)"
   @edge_cql_for_tx_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix,el,lx,sx) VALUES (?,30,?,?,?,?,?,?,?)"
   @edge_cql_for_tx_nil_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix,el,lx) VALUES (?,30,?,?,?,?,?,?)"
   @edge_hint_cql_for_address_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix) VALUES (?,60,0,varintAsBlob(0),varintAsBlob(0),0)"
-  @edge_hint_cql_for_tag_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix) VALUES (?,70,0,varintAsBlob(0),varintAsBlob(0),0)"
   @edge_cql_for_approve_row "INSERT INTO tangle.edge (v1,lb,ts,v2,ex,ix,lx) VALUES (?,?,?,?,?,?,?)"
   @zero_value_cql_for_address_row "INSERT INTO tangle.zero_value (v1,yy,mm,lb,ts,v2,ex,ix,el,lx) VALUES (?,?,?,10,?,?,varintAsBlob(0),?,30,?)"
-  @tag_cql_for_tag_row "INSERT INTO tangle.tag (p0,p1,yy,mm,p2,p3,rt,ts,th) VALUES (?,?,?,?,?,?,?,?,?)"
 
 
   def queries(zero_value?,[%{hash: head_hash} | _] = bundle) do
