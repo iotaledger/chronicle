@@ -7,14 +7,14 @@ defmodule Core.Utils.Importer do
   @max Application.get_env(:core, :max_import_concurrent) || 1000
 
   def start_link(_args) do
-    Logger.info("Starting the importing script")
+    Logger.info("the importer will start after 1 minute")
     GenServer.start_link(__MODULE__,%{dmps: [], max: @max, pending: 0, total: 0},name: :importer)
   end
 
   def init(state) do
+    Process.sleep(60000)
     dmps = File.read!("./historical/dmps.txt")
     |> String.split("\n", trim: true)
-    Process.sleep(30000)
     Logger.info("Importer started")
     Process.send_after(self(), :monitor, 300000)
     send(self(), :import)
@@ -22,6 +22,10 @@ defmodule Core.Utils.Importer do
     {:ok, state}
   end
 
+  def handle_info(:ready?, state) do
+
+    {:noreply, state}
+  end
   def handle_info(:finished_one, %{pending: pending, total: total}= state) do
     state = process_more?(%{state | pending: pending-1, total: total+1})
     {:noreply, state}
