@@ -126,8 +126,7 @@ defmodule Core.Utils.Importer.Helper81 do
   defp zero_value_address_row_query(true, v1, ts,yy,mm, v2, ix, lx) do
     # v1 blob, yy smallint, mm smallint, ts varint, v2 blob, ix varint, lx varint
     {:ok, qf, qs} =
-      {Tangle, ZeroValue}
-      |> cql(@zero_value_cql_for_address_row)
+      cql({Tangle, ZeroValue}, @zero_value_cql_for_address_row)
       |> type(:insert)
       |> values([
         {:blob, v1},
